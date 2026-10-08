@@ -1,0 +1,78 @@
+/**
+ * Group-fair ranking.
+ *
+ * Each member i has an affinity a_i(c) for candidate c (Qloo /v2/insights scored with that
+ * member's own taste signal, restricted to the shared shortlist via filter.results.entities).
+ * Raw affinities are not comparable across people, so we convert them to a within-person
+ * percentile s_i(c) ∈ [0,1] ("how high does c rank among tonight's options for i").
+ *
+ *   group choice = argmax_c  min_i s_i(c)          (maximin / Rawlsian: protect the least-happy)
+ *   tie-break    = argmax_c  Π_i (ε + s_i(c))      (Nash welfare: balanced, scale-free)
+ *   baseline     = argmax_c  mean_i s_i(c)         (what averaging / majority vote would pick)
+ */
+import type { InsightEntity, Member, MemberScore, RankedCandidate } from "./types";
+
+const EPS = 0.05;
+
+export function percentiles(values: number[]): number[] {
+  const n = values.length;
+  if (n <= 1) return values.map(() => 1);
+  const order = values.map((v, i) => [v, i] as const).sort((a, b) => a[0] - b[0]);
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; ) {
+    let j = i;
+    while (j + 1 < n && order[j + 1][0] === order[i][0]) j++;
+    const p = (i + j) / 2 / (n - 1); // average rank for ties
+    for (let k = i; k <= j; k++) out[order[k][1]] = p;
+    i = j + 1;
+  }
+  return out;
+}
+
+export function rankFairly(
+  shortlist: InsightEntity[],
+  members: Member[],
+  perMember: Record<string, InsightEntity[]>,
+): { ranked: RankedCandidate[]; majority: RankedCandidate | null } {
+  if (!shortlist.length || !members.length) return { ranked: [], majority: null };
+
+  const scoresByMember = members.map((m) => {
+    const scored = new Map((perMember[m.id] ?? []).map((e) => [e.entity_id, e]));
+    const aff = shortlist.map((c) => scored.get(c.entity_id)?.affinity ?? 0);
+    const pct = percentiles(aff);
+    const pickName = new Map(m.picks.map((p) => [p.entity_id, p.name]));
+    return shortlist.map<MemberScore>((c, idx) => {
+      const explain = scored.get(c.entity_id)?.explain ?? {};
+      const because = Object.entries(explain)
+        .filter(([id]) => pickName.has(id))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(([id, w]) => ({ name: pickName.get(id)!, weight: +w.toFixed(3) }));
+      return {
+        member_id: m.id,
+        member_name: m.name,
+        affinity: +aff[idx].toFixed(4),
+        satisfaction: +pct[idx].toFixed(3),
+        because,
+      };
+    });
+  });
+
+  const ranked = shortlist.map<RankedCandidate>((entity, idx) => {
+    const scores = scoresByMember.map((row) => row[idx]);
+    const sats = scores.map((s) => s.satisfaction);
+    return {
+      entity,
+      scores,
+      min_satisfaction: Math.min(...sats),
+      mean_satisfaction: +(sats.reduce((a, b) => a + b, 0) / sats.length).toFixed(3),
+      nash: +sats.reduce((p, s) => p * (EPS + s), 1).toFixed(6),
+    };
+  });
+
+  const majority = [...ranked].sort(
+    (a, b) => b.mean_satisfaction - a.mean_satisfaction || b.entity.affinity - a.entity.affinity,
+  )[0];
+  ranked.sort((a, b) => b.min_satisfaction - a.min_satisfaction || b.nash - a.nash);
+  return { ranked, majority };
+}
