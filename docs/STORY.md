@@ -1,5 +1,5 @@
 ## Inspiration
-"Where should we eat?" can take a group twenty minutes, and the quietest friend usually ends up with the option they like least. Recommenders are built for one person. My PhD research is on explainable AI and user trust, so I wanted a group recommender that is **fair by design** and **shows its working**.
+"Where should we eat?" can take a group twenty minutes, and the quietest friend's taste usually gets ignored. Recommenders are built for one person. My PhD research is on explainable AI and user trust, so I wanted a group recommender that is **fair by design** and **shows its working**.
 
 ## What it does
 TasteBridge helps a group pick **one** dinner spot, movie or TV show that everyone can enjoy.
@@ -7,8 +7,8 @@ TasteBridge helps a group pick **one** dinner spot, movie or TV show that everyo
 1. One person starts a *huddle*, adds must-haves ("Priya is vegetarian, under $$$") and shares a link.
 2. Each friend adds up to three favourites from **any** domain: a film, an artist, a show, a book.
 3. The agent builds a shortlist from the group's combined taste, then **scores that same shortlist against each person's own taste**.
-4. It recommends the option that maximises the score of the **least-happy** member. Everyone sees their own score and a personal reason ("matches your love of *Spirited Away*").
-5. It also shows what a plain average would have picked and who that would have left out. Sometimes both pick the same thing, and the app says so.
+4. It recommends the option that maximises the **lowest taste match** in the group. Everyone sees their own match and the favourite behind it ("driven mostly by *Spirited Away*").
+5. It also shows what a simple average would have picked and whose match would have been lowest there. Sometimes both pick the same thing, and the app says so.
 
 ## How Qloo makes it work
 Without Qloo there is no way to know how a fan of *Mad Max* and Daft Punk will feel about a vegetarian café. TasteBridge uses Qloo for every number:
