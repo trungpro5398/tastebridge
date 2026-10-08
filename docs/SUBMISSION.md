@@ -1,6 +1,6 @@
 # TasteBridge submission preparation — 9 October 2026
 
-Status: verified local prototype; live providers, persistent hosting and final submission remain pending. Do not describe this as a live Qloo deployment until the provider checks pass.
+Status (9 Oct 2026): deployed at https://tastebridge-brown.vercel.app with Supabase persistence (project `tastebridge`, Sydney; RLS on, anon key has no access). Verified on production: demo huddle create → 4 joins → decide → result persisted and re-read across requests. Qloo and Claude still run in offline/rules mode until `QLOO_API_KEY` and `ANTHROPIC_API_KEY` are added on Vercel. Do not describe this as a live Qloo deployment until the provider checks pass.
 
 ## Current submission requirements
 
@@ -18,7 +18,7 @@ Start a huddle for a restaurant, film or TV show and invite friends by link. Eac
 
 Next.js and TypeScript provide the interface and server routes. Qloo search resolves favourites; tags represent constraints; Insights generates candidates and scores the same candidates for each member using `filter.results.entities` and `feature.explainability`. The optional comparison tool uses `/v2/analysis/compare`.
 
-Claude uses five tools to retrieve tags, create candidates, score members, compare tastes and finalize explanations. The application enforces the deterministic top-three order and preserves supported diet and budget requirements across retries. Per-person percentiles make score scales comparable; maximin chooses the winner and Nash welfare breaks ties. Supabase persistence is implemented but still awaits live configuration and verification.
+Claude uses five tools to retrieve tags, create candidates, score members, compare tastes and finalize explanations. The application enforces the deterministic top-three order and preserves supported diet and budget requirements across retries. Per-person percentiles make score scales comparable; maximin chooses the winner and Nash welfare breaks ties. Huddles persist in Supabase (Postgres, row-level security on, server-only access).
 
 ## Challenges and accomplishments
 
@@ -29,8 +29,9 @@ Scores are relative ranks, not measured happiness. There are no real-world impac
 ## Before submitting
 
 - Configure Qloo and Anthropic privately; verify real searches, filters, explainability, comparison and an actual Claude tool run.
-- Reconnect Supabase, create/select the intended project, apply `supabase/schema.sql` and verify persistence across instances.
-- Deploy to the intended Vercel account and test with two browser sessions. Confirm judges can use it without deployment authentication.
+- ✅ Supabase project created, schema applied, persistence verified on production.
+- ✅ Deployed to Vercel (public, no deployment authentication on the production URL).
+- After adding keys on Vercel: `vercel env add QLOO_API_KEY production`, `vercel env add ANTHROPIC_API_KEY production`, then `vercel deploy --prod`.
 - Provide the public repository URL and working app URL in Devpost. Keep the MIT license visible.
 - Review generated explanations against actual provider output. Replace this status paragraph with measured live verification only after it exists.
 - Submit through Devpost after the live application is ready. An optional video can explain the flow, but must label synthetic data honestly.
