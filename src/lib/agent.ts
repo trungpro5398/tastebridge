@@ -7,15 +7,16 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod";
-import { DecisionSession, decideWithRules } from "./decide";
+import { DecisionSession, decideWithRules, type OnStep } from "./decide";
 import type { Decision, Huddle } from "./types";
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
+// Sonnet keeps per-decision cost low; override with ANTHROPIC_MODEL.
+const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
 
 const SYSTEM = `You are TasteBridge, a facilitator that helps a group choose ONE option everyone can enjoy.
 
 You have tools backed by Qloo's taste graph and a fairness scorer. Work like this:
-1. Read the huddle's notes for hard constraints (diet, budget, vibe). Use find_tags to turn them into Qloo tag ids when useful, and price_level_max for budgets ("$" = 1 … "$$$$" = 4).
+1. Read the huddle's notes for hard constraints (diet, budget, vibe). Use find_tags to turn them into Qloo tag ids when useful, and price_level_max for budgets ("$" = 1 … "$$$$" = 4; "under $$$" means at most $$).
 2. Call group_candidates, then score_for_members.
 3. If the fairest option leaves someone below 50%, try once more with a larger shortlist or different soft preferences, then score again. Never remove a hard diet or budget requirement. Do not loop more than twice.
 4. Optionally call compare_tastes for the two members who disagree most, to explain the trade-off.
@@ -34,10 +35,16 @@ export function agentEnabled() {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
-export async function decide(huddle: Huddle): Promise<Decision> {
-  if (!agentEnabled()) return decideWithRules(huddle);
+export async function decide(
+  huddle: Huddle,
+  opts: { onStep?: OnStep; allowAgent?: boolean; skipReason?: string } = {},
+): Promise<Decision> {
+  if (!agentEnabled()) return decideWithRules(huddle, opts.onStep);
+  if (opts.allowAgent === false)
+    return decideWithRules(huddle, opts.onStep, `Claude skipped (${opts.skipReason ?? "budget"}); using rule-based explanations`);
 
-  const s = new DecisionSession(huddle);
+  const s = new DecisionSession(huddle, opts.onStep);
+  s.log("agent", "Claude is planning which Qloo calls to make");
   const json = (v: unknown) => JSON.stringify(v);
 
   const tools = [

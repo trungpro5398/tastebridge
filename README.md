@@ -72,6 +72,9 @@ Project story, a redacted request → result walkthrough and known limitations a
 - Qloo responses are cached in server memory for 30 minutes. No Qloo data is committed to this repo.
 - `compare_tastes` calls [`/v2/analysis/compare`](https://docs.qloo.com/reference/analysis-compare) in live mode and falls back to the scored shortlist if that optional endpoint fails.
 - Keys are only read on the server; the browser never sees them.
+- The decide endpoint streams the agent's real steps (NDJSON) so users watch it work. It reuses the saved result while the group is unchanged.
+- **Cost guard:** the agent defaults to `claude-sonnet-5-5`, capped at `AGENT_DAILY_LIMIT` runs/day (default 100) and `AGENT_IP_HOURLY_LIMIT` per hashed IP (default 6). Over budget, it answers with rule-based explanations instead of failing.
+- A one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
 - Every decision stores a redacted **Qloo evidence** log (endpoint, filters, tag choices, result counts, live/cache/offline) shown under each result. Member names are never sent to Qloo.
 
 ## Stack

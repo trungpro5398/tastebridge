@@ -9,6 +9,7 @@ import type { Decision, Entity, Huddle, HuddleKind, Member } from "./types";
 const URL_ = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const sb: SupabaseClient | null = URL_ && KEY ? createClient(URL_, KEY, { auth: { persistSession: false } }) : null;
+export const supabase = sb;
 
 const g = globalThis as unknown as { __huddles?: Map<string, Huddle> };
 const mem = (g.__huddles ??= new Map());
@@ -73,4 +74,20 @@ export async function saveDecision(huddleId: string, result: Decision) {
   }
   const { error } = await sb.from("huddles").update({ result }).eq("id", huddleId);
   if (error) throw new Error(error.message);
+}
+
+/** One-tap "did this work for your group?" feedback; no personal data. */
+export async function addFeedback(huddleId: string, vote: "up" | "down") {
+  const entry = { vote, at: new Date().toISOString() };
+  if (!sb) {
+    const h = mem.get(huddleId);
+    if (!h) throw new Error("not found");
+    h.feedback = [...(h.feedback ?? []), entry].slice(-50);
+    return;
+  }
+  const { data, error } = await sb.from("huddles").select("feedback").eq("id", huddleId).maybeSingle();
+  if (error || !data) throw new Error(error?.message ?? "not found");
+  const next = [...((data.feedback as unknown[]) ?? []), entry].slice(-50);
+  const upd = await sb.from("huddles").update({ feedback: next }).eq("id", huddleId);
+  if (upd.error) throw new Error(upd.error.message);
 }

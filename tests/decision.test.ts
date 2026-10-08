@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DecisionSession, decideWithRules } from "../src/lib/decide";
+import { DecisionSession, decideWithRules, parsePrice } from "../src/lib/decide";
 import { MOCK_ENTITIES } from "../src/lib/mock-data";
 import { JoinHuddle } from "../src/app/api/schemas";
 import type { Huddle } from "../src/lib/types";
 
-function huddle(notes = "One vegetarian, under $$"): Huddle {
+function huddle(notes = "One vegetarian, under $$$"): Huddle {
   return {
     id: "test", title: "Dinner", kind: "place", location: "Melbourne", notes, created_at: "",
     members: ["Spirited Away", "John Wick"].map((name, i) => ({
@@ -72,4 +72,12 @@ test("joining rejects duplicate favourites and more than three picks", () => {
   const pick = huddle().members[0].picks[0];
   assert.equal(JoinHuddle.safeParse({ name: "A", picks: [pick, pick] }).success, false);
   assert.equal(JoinHuddle.safeParse({ name: "A", picks: MOCK_ENTITIES.slice(0, 4) }).success, false);
+});
+
+test("budget phrases: 'under' excludes the named level, 'max'/'up to' include it", () => {
+  assert.equal(parsePrice("Keep it under $$$"), 2);
+  assert.equal(parsePrice("under $"), 1);
+  assert.equal(parsePrice("max $$"), 2);
+  assert.equal(parsePrice("up to $$$"), 3);
+  assert.equal(parsePrice("no budget"), undefined);
 });

@@ -1,18 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import FavouritePicker, { typeLabel } from "@/components/FavouritePicker";
 import Results from "@/components/Results";
 import type { Decision, Entity, Huddle } from "@/lib/types";
 
 const KIND_LABEL = { place: "Dinner spot", movie: "Movie", tv_show: "TV show" } as const;
-const THINKING = [
-  "Reading everyone's favourites…",
-  "Asking Qloo what this group might love…",
-  "Scoring each option for each person…",
-  "Checking nobody gets left out…",
-  "Writing up the why…",
-];
+type Step = { tool: string; summary: string };
+const STEP_LABEL: Record<string, string> = {
+  agent: "Agent",
+  find_tags: "Matching must-haves to Qloo tags",
+  group_candidates: "Building a shortlist from everyone's taste",
+  score_for_members: "Scoring the shortlist for each person",
+  compare_tastes: "Comparing tastes",
+  finalize: "Writing each person's explanation",
+};
 
 function subscribeStorage(cb: () => void) {
   window.addEventListener("storage", cb);
@@ -34,7 +36,10 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   const [picks, setPicks] = useState<Entity[]>([]);
   const [joining, setJoining] = useState(false);
   const [deciding, setDeciding] = useState(false);
-  const [step, setStep] = useState(0);
+  const [steps, setSteps] = useState<Step[]>([]);
+  const [voted, setVoted] = useState<"up" | "down" | null>(null);
+  const [showJoin, setShowJoin] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const storageKey = `tb:${initial.id}`;
@@ -52,12 +57,6 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     const t = setInterval(() => document.visibilityState === "visible" && !deciding && refresh(), 4000);
     return () => clearInterval(t);
   }, [refresh, deciding]);
-
-  useEffect(() => {
-    if (!deciding) return;
-    const t = setInterval(() => setStep((s) => Math.min(s + 1, THINKING.length - 1)), 3500);
-    return () => clearInterval(t);
-  }, [deciding]);
 
   async function join() {
     setJoining(true);
@@ -77,15 +76,68 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     refresh();
   }
 
-  async function decide() {
-    setStep(0);
+  async function decide(force = false) {
+    setSteps([]);
+    setVoted(null);
     setDeciding(true);
     setError("");
-    const res = await fetch(`/api/huddles/${huddle.id}/decide`, { method: "POST" }).catch(() => null);
-    const data = res ? await res.json().catch(() => ({})) : {};
-    setDeciding(false);
-    if (!res?.ok) return setError(data.error ?? "Something went wrong. Try again.");
-    setHuddle((h) => ({ ...h, result: data as Decision }));
+    try {
+      const res = await fetch(`/api/huddles/${huddle.id}/decide`, {
+        method: "POST",
+        headers: { accept: "application/x-ndjson" },
+        body: JSON.stringify({ force }),
+      });
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Something went wrong. Try again.");
+      }
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = "";
+      let finished = false;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const ev = JSON.parse(line);
+          if (ev.type === "step") setSteps((prev) => [...prev, { tool: ev.tool, summary: ev.summary }]);
+          else if (ev.type === "error") throw new Error(ev.error);
+          else if (ev.type === "result") {
+            finished = true;
+            setHuddle((h) => ({ ...h, result: ev.decision as Decision }));
+          }
+        }
+      }
+      if (!finished) throw new Error("The decision was interrupted. Please try again.");
+      requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect. Try again.");
+    } finally {
+      setDeciding(false);
+    }
+  }
+
+  async function vote(v: "up" | "down") {
+    setVoted(v);
+    await fetch(`/api/huddles/${huddle.id}/feedback`, { method: "POST", body: JSON.stringify({ vote: v }) }).catch(() => {});
+  }
+
+  async function shareResult() {
+    const top = huddle.result?.picks[0];
+    if (!top) return;
+    const text = `Tonight: ${top.headline}. See why it works for all of us:`;
+    const url = window.location.href;
+    if (navigator.share) return navigator.share({ title: huddle.title, text, url }).catch(() => {});
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy. Copy the address from your browser instead.");
+    }
   }
 
   async function share() {
@@ -105,6 +157,128 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
 
   const canDecide = huddle.members.length >= 2;
 
+  const decisionSection = (
+    <>
+      {deciding ? (
+        <div className="rounded-2xl border border-line bg-card p-5" role="status" aria-live="polite">
+          <p className="text-sm font-medium">Finding your fair pick…</p>
+          <ol className="mt-3 space-y-2.5">
+            {steps.map((st, i) => (
+              <li key={i} className="flex gap-2.5 text-sm">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent/15 text-xs text-accent">
+                  ✓
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium">{STEP_LABEL[st.tool] ?? st.tool}</span>
+                  <span className="block break-words text-xs text-muted">{st.summary}</span>
+                </span>
+              </li>
+            ))}
+            <li className="flex items-center gap-2.5 text-sm text-muted">
+              <span className="size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand" />
+              {steps.length === 0 ? "Reading everyone's favourites" : "Working"}
+            </li>
+          </ol>
+        </div>
+      ) : !huddle.result ? (
+        <button
+          onClick={() => decide()}
+          disabled={!canDecide}
+          className="w-full rounded-2xl bg-brand px-4 py-4 text-lg font-medium text-brand-ink shadow-sm transition hover:opacity-90 disabled:opacity-40"
+        >
+          {canDecide ? "Find our fair pick" : "Waiting for at least 2 people"}
+        </button>
+      ) : null}
+
+      {huddle.result && !deciding && (
+        <div ref={resultRef} className="scroll-mt-4 space-y-4">
+          <Results decision={huddle.result} />
+          <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              {voted ? (
+                <span className="text-muted">Thanks! That helps us improve.</span>
+              ) : (
+                <>
+                  <span>Did this work for your group?</span>
+                  <button onClick={() => vote("up")} aria-label="Yes" className="rounded-lg border border-line px-2.5 py-1 hover:bg-soft">
+                    👍
+                  </button>
+                  <button onClick={() => vote("down")} aria-label="No" className="rounded-lg border border-line px-2.5 py-1 hover:bg-soft">
+                    👎
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={shareResult} className="rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background">
+                {copied ? "Copied ✓" : "Send to the group"}
+              </button>
+              <button onClick={() => decide(true)} className="rounded-xl border border-line px-3 py-2 text-sm hover:bg-soft">
+                Run again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const membersSection = (
+    <section className="rounded-2xl border border-line bg-card p-5">
+      <h2 className="text-sm font-medium">
+        Who&apos;s in <span className="text-muted">({huddle.members.length})</span>
+      </h2>
+      {huddle.members.length === 0 && (
+        <p className="mt-2 text-sm text-muted">Nobody yet. Add yourself, then send the link to your group.</p>
+      )}
+      <ul className="mt-3 space-y-3">
+        {huddle.members.map((m) => (
+          <li key={m.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-medium">
+              {m.name}
+              {m.id === joinedAs && <span className="ml-1 text-xs text-muted">(you)</span>}
+            </span>
+            <span className="text-sm text-muted">
+              {m.picks.map((p) => `${p.name} (${typeLabel(p.type)})`).join(" · ")}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {!joinedAs && huddle.members.length < 8 && huddle.result && !showJoin && (
+        <button
+          onClick={() => setShowJoin(true)}
+          className="mt-4 w-full rounded-xl border border-dashed border-line px-4 py-2.5 text-sm hover:bg-soft"
+        >
+          Add your taste too (the pick will update)
+        </button>
+      )}
+      {!joinedAs && huddle.members.length < 8 && (!huddle.result || showJoin) && (
+        <div className="mt-5 border-t border-line pt-5">
+          <p className="text-sm font-medium">Add your taste</p>
+          <input
+            aria-label="Your first name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your first name"
+            maxLength={40}
+            className="mt-2 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
+          />
+          <div className="mt-3">
+            <FavouritePicker value={picks} onChange={setPicks} />
+          </div>
+          <button
+            onClick={join}
+            disabled={joining || !name.trim() || picks.length === 0}
+            className="mt-4 w-full rounded-xl bg-foreground px-4 py-3 font-medium text-background disabled:opacity-40"
+          >
+            {joining ? "Adding…" : "I'm in"}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <div className="space-y-6 pt-6">
       <section>
@@ -121,70 +295,9 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
         {huddle.notes && <p className="mt-1 text-sm text-muted">Must-haves: {huddle.notes}</p>}
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-sm font-medium">
-          Who&apos;s in <span className="text-muted">({huddle.members.length})</span>
-        </h2>
-        {huddle.members.length === 0 && (
-          <p className="mt-2 text-sm text-muted">Nobody yet. Add yourself, then send the link to your group.</p>
-        )}
-        <ul className="mt-3 space-y-3">
-          {huddle.members.map((m) => (
-            <li key={m.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="font-medium">
-                {m.name}
-                {m.id === joinedAs && <span className="ml-1 text-xs text-muted">(you)</span>}
-              </span>
-              <span className="text-sm text-muted">
-                {m.picks.map((p) => `${p.name} (${typeLabel(p.type)})`).join(" · ")}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {!joinedAs && huddle.members.length < 8 && (
-          <div className="mt-5 border-t border-line pt-5">
-            <p className="text-sm font-medium">Add your taste</p>
-            <input
-              aria-label="Your first name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your first name"
-              maxLength={40}
-              className="mt-2 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
-            />
-            <div className="mt-3">
-              <FavouritePicker value={picks} onChange={setPicks} />
-            </div>
-            <button
-              onClick={join}
-              disabled={joining || !name.trim() || picks.length === 0}
-              className="mt-4 w-full rounded-xl bg-foreground px-4 py-3 font-medium text-background disabled:opacity-40"
-            >
-              {joining ? "Adding…" : "I'm in"}
-            </button>
-          </div>
-        )}
-      </section>
-
+      {huddle.result || deciding ? decisionSection : membersSection}
       {error && <p className="rounded-xl bg-brand/10 px-4 py-3 text-sm text-brand">{error}</p>}
-
-      {deciding ? (
-        <div className="rounded-2xl border border-line bg-card p-6 text-center" role="status">
-          <div className="mx-auto size-8 animate-spin rounded-full border-2 border-line border-t-brand" />
-          <p className="mt-3 text-sm">{THINKING[step]}</p>
-        </div>
-      ) : (
-        <button
-          onClick={decide}
-          disabled={!canDecide}
-          className="w-full rounded-2xl bg-brand px-4 py-4 text-lg font-medium text-brand-ink shadow-sm transition hover:opacity-90 disabled:opacity-40"
-        >
-          {huddle.result ? "Decide again" : canDecide ? "Find our fair pick" : "Waiting for at least 2 people"}
-        </button>
-      )}
-
-      {huddle.result && !deciding && <Results decision={huddle.result} />}
+      {huddle.result || deciding ? membersSection : decisionSection}
     </div>
   );
 }

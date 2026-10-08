@@ -24,3 +24,16 @@ create index if not exists members_huddle_idx on members(huddle_id);
 
 alter table huddles enable row level security;
 alter table members enable row level security;
+
+-- Budget guard for the Claude agent: one row per agent run (IP stored only as a salted hash).
+create table if not exists agent_runs (
+  id          bigint generated always as identity primary key,
+  ip_hash     text not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists agent_runs_created_idx on agent_runs(created_at);
+create index if not exists agent_runs_ip_idx on agent_runs(ip_hash, created_at);
+alter table agent_runs enable row level security;
+
+-- Optional one-tap feedback after a decision (no personal data).
+alter table huddles add column if not exists feedback jsonb not null default '[]';

@@ -50,6 +50,7 @@ export type Huddle = {
   created_at: string;
   members: Member[];
   result?: Decision | null;
+  feedback?: { vote: "up" | "down"; at: string }[];
 };
 
 export type MemberScore = {

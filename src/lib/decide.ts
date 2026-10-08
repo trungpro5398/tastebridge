@@ -19,6 +19,9 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export class ConstraintError extends Error {}
 
+export type Step = { tool: string; summary: string };
+export type OnStep = (step: Step) => void;
+
 export class DecisionSession {
   shortlist: InsightEntity[] = [];
   perMember: Record<string, InsightEntity[]> = {};
@@ -30,7 +33,10 @@ export class DecisionSession {
   tradeoffNote = "";
   requiredTags: string[] | null = null;
 
-  constructor(readonly huddle: Huddle) {}
+  constructor(
+    readonly huddle: Huddle,
+    private readonly onStep?: OnStep,
+  ) {}
 
   get type() {
     return KIND_TO_TYPE[this.huddle.kind];
@@ -47,10 +53,17 @@ export class DecisionSession {
 
   log(tool: string, summary: string) {
     this.trace.push({ tool, summary });
+    this.onStep?.({ tool, summary });
   }
 
+  private tagCache = new Map<string, { id: string; name: string }[]>();
+
   async findTags(query: string) {
+    const key = query.trim().toLowerCase();
+    const hit = this.tagCache.get(key);
+    if (hit) return hit;
     const tags = await findTags(query);
+    this.tagCache.set(key, tags);
     this.log("find_tags", `"${query}" → ${tags.map((t) => t.name).join(", ") || "none"}`);
     return tags;
   }
@@ -235,14 +248,18 @@ function ruleTradeoff(fair?: RankedCandidate, majority?: RankedCandidate | null)
   return `A simple average would pick ${majority.entity.name}, but ${loser.member_name}'s taste match there is only ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone at ${pct(fair.min_satisfaction)} or higher.`;
 }
 
-export async function decideWithRules(huddle: Huddle): Promise<Decision> {
-  const s = new DecisionSession(huddle);
+export async function decideWithRules(huddle: Huddle, onStep?: OnStep, why?: string): Promise<Decision> {
+  const s = new DecisionSession(huddle, onStep);
+  if (why) s.log("agent", why);
   await s.generateCandidates({ priceMax: parsePrice(huddle.notes) });
   await s.scoreMembers();
   return s.toDecision("rules");
 }
 
-function parsePrice(notes?: string) {
-  const m = notes?.match(/(?:under|max|≤|<=)\s*(\${1,4})/i);
-  return m ? m[1].length : undefined;
+/** "under $$$" means cheaper than $$$ (≤ $$); "max $$" / "≤ $$" / "up to $$" include it. */
+export function parsePrice(notes?: string) {
+  const m = notes?.match(/(under|below|max|up to|≤|<=)\s*(\${1,4})/i);
+  if (!m) return undefined;
+  const n = m[2].length;
+  return /under|below/i.test(m[1]) ? Math.max(1, n - 1) : n;
 }

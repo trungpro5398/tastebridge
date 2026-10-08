@@ -12,7 +12,7 @@ const KINDS = [
 export default function CreateHuddle() {
   const router = useRouter();
   const [kind, setKind] = useState<(typeof KINDS)[number]["value"]>("place");
-  const [busy, setBusy] = useState<"create" | "demo" | null>(null);
+  const [busy, setBusy] = useState<"create" | null>(null);
   const [error, setError] = useState("");
 
   async function submit(form: FormData) {
@@ -28,21 +28,6 @@ export default function CreateHuddle() {
       const res = await fetch("/api/huddles", { method: "POST", body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.id) throw new Error(data.error ?? "Could not create a huddle. Try again.");
-      router.push(`/h/${data.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not connect. Try again.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function demo() {
-    setBusy("demo");
-    setError("");
-    try {
-      const res = await fetch("/api/demo", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.id) throw new Error(data.error ?? "Could not start the demo. Try again.");
       router.push(`/h/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not connect. Try again.");
@@ -117,13 +102,6 @@ export default function CreateHuddle() {
           {busy === "create" ? "Creating…" : "Start a huddle"}
         </button>
       </form>
-      <button
-        onClick={demo}
-        disabled={!!busy}
-        className="mt-3 w-full rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-soft disabled:opacity-60"
-      >
-        {busy === "demo" ? "Setting up 4 friends…" : "Try a demo with 4 friends who disagree"}
-      </button>
     </div>
   );
 }
