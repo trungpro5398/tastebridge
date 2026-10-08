@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Entity } from "@/lib/types";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -28,22 +28,24 @@ export default function FavouritePicker({
   const [results, setResults] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
-  const reqId = useRef(0);
 
   useEffect(() => {
     if (q.trim().length < 2) return;
-    const id = ++reqId.current;
+    let cancelled = false;
     const t = setTimeout(async () => {
       setLoading(true);
       const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`).catch(() => null);
-      const data: Entity[] = res?.ok ? await res.json() : [];
-      if (id === reqId.current) {
+      const data: Entity[] = res?.ok ? await res.json().catch(() => []) : [];
+      if (!cancelled) {
         setResults(data.filter((e) => !value.some((v) => v.entity_id === e.entity_id)));
         setActive(0);
         setLoading(false);
       }
     }, 250);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      cancelled = true;
+    };
   }, [q, value]);
 
   function add(e: Entity) {
@@ -77,6 +79,7 @@ export default function FavouritePicker({
       <p className="text-xs text-muted">Films, shows, artists or books you love. Mix them up!</p>
       <div className="relative mt-2">
         <input
+          aria-label="Search favourites"
           value={q}
           disabled={full}
           onChange={(e) => setQ(e.target.value)}

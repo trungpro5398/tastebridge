@@ -65,10 +65,10 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     const res = await fetch(`/api/huddles/${huddle.id}/members`, {
       method: "POST",
       body: JSON.stringify({ name: name.trim(), picks }),
-    });
-    const data = await res.json();
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
     setJoining(false);
-    if (!res.ok) return setError(data.error ?? "Could not join");
+    if (!res?.ok || !data.id) return setError(data.error ?? "Could not join. Please try again.");
     try {
       localStorage.setItem(storageKey, data.id);
     } catch {}
@@ -93,9 +93,13 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     if (navigator.share) {
       await navigator.share({ title: huddle.title, text: "Add your favourites so we can decide:", url }).catch(() => {});
     } else {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        setError("Could not copy the link. Copy the address from your browser to invite friends.");
+      }
     }
   }
 
@@ -138,10 +142,11 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
           ))}
         </ul>
 
-        {!joinedAs && (
+        {!joinedAs && huddle.members.length < 8 && (
           <div className="mt-5 border-t border-line pt-5">
             <p className="text-sm font-medium">Add your taste</p>
             <input
+              aria-label="Your first name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your first name"

@@ -1,4 +1,5 @@
 import { decide } from "@/lib/agent";
+import { ConstraintError } from "@/lib/decide";
 import { QlooError } from "@/lib/qloo";
 import { getHuddle, saveDecision } from "@/lib/store";
 
@@ -18,6 +19,8 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/huddles/[id]/d
     await saveDecision(id, result);
     return Response.json(result);
   } catch (err) {
+    if (err instanceof ConstraintError)
+      return Response.json({ error: err.message }, { status: 422 });
     if (err instanceof QlooError) {
       console.error("[decide]", err.message);
       return Response.json({ error: "The taste service is busy. Please try again in a minute." }, { status: 502 });

@@ -40,6 +40,11 @@ export default function Results({ decision }: { decision: Decision }) {
 
   return (
     <section className="space-y-4" aria-live="polite">
+      <p className="text-xs text-muted">
+        Scores show each person&apos;s relative ranking within this shortlist, not a probability of enjoyment.
+        {decision.mode.qloo === "mock" && " Demo data: venues are fictional and location is not applied."}
+        {decision.mode.agent === "rules" && " Rules mode checks supported diet tags and dollar-sign budgets; review any other must-haves yourself."}
+      </p>
       <article className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
         <div className="bg-brand/10 px-5 py-2 text-xs font-medium uppercase tracking-wider text-brand">
           Tonight&apos;s fair pick

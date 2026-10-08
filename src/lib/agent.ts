@@ -17,9 +17,9 @@ const SYSTEM = `You are TasteBridge, a facilitator that helps a group choose ONE
 You have tools backed by Qloo's taste graph and a fairness scorer. Work like this:
 1. Read the huddle's notes for hard constraints (diet, budget, vibe). Use find_tags to turn them into Qloo tag ids when useful, and price_level_max for budgets ("$" = 1 … "$$$$" = 4).
 2. Call group_candidates, then score_for_members.
-3. If the fairest option leaves someone below 50%, try once more with a different constraint or a larger shortlist, then score again. Do not loop more than twice.
+3. If the fairest option leaves someone below 50%, try once more with a larger shortlist or different soft preferences, then score again. Never remove a hard diet or budget requirement. Do not loop more than twice.
 4. Optionally call compare_tastes for the two members who disagree most, to explain the trade-off.
-5. Call finalize with the top 3 entity_ids from the latest fair_ranking (keep its order unless a hard constraint rules one out).
+5. Call finalize with exactly the top 3 entity_ids (or all if fewer) from the latest fair_ranking, in its order. If a hard constraint rules one out, regenerate and rescore first.
 
 Writing rules for finalize:
 - Every claim must come from tool output: satisfaction percentages, the member favourites listed in driven_by_their_favourites, tags. Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given).
@@ -74,7 +74,7 @@ export async function decide(huddle: Huddle): Promise<Decision> {
       name: "compare_tastes",
       description: "Compare two members over the scored shortlist: what both like, where they split, shared taste tags.",
       inputSchema: z.object({ member_a: z.string(), member_b: z.string() }),
-      run: async ({ member_a, member_b }) => json(s.compareMembers(member_a, member_b)),
+      run: async ({ member_a, member_b }) => json(await s.compareMembers(member_a, member_b)),
     }),
     betaZodTool({
       name: "finalize",
@@ -106,7 +106,7 @@ export async function decide(huddle: Huddle): Promise<Decision> {
   };
 
   try {
-    const client = new Anthropic();
+    const client = new Anthropic({ maxRetries: 0, timeout: 25_000 });
     const final = await client.beta.messages.toolRunner({
       model: MODEL,
       max_tokens: 16000,
@@ -118,7 +118,7 @@ export async function decide(huddle: Huddle): Promise<Decision> {
       tools,
       max_iterations: 10,
       messages: [{ role: "user", content: `Huddle:\n${json(brief)}\n\nFind tonight's pick.` }],
-    });
+    }, { signal: AbortSignal.timeout(65_000) });
     if (final.stop_reason === "refusal") s.log("agent", "model declined; using rule-based explanations");
   } catch (err) {
     if (err instanceof Anthropic.APIError) {

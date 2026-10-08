@@ -5,7 +5,7 @@
  */
 import "server-only";
 import { rankFairly } from "./fairness";
-import { findTags, insights, qlooMode } from "./qloo";
+import { compareTastes, findTags, insights, qlooMode } from "./qloo";
 import {
   KIND_TO_TYPE,
   type Decision,
@@ -17,6 +17,8 @@ import {
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
+export class ConstraintError extends Error {}
+
 export class DecisionSession {
   shortlist: InsightEntity[] = [];
   perMember: Record<string, InsightEntity[]> = {};
@@ -26,6 +28,7 @@ export class DecisionSession {
   trace: Decision["trace"] = [];
   picks: Pick[] | null = null;
   tradeoffNote = "";
+  requiredTags: string[] | null = null;
 
   constructor(readonly huddle: Huddle) {}
 
@@ -53,33 +56,54 @@ export class DecisionSession {
   }
 
   async generateCandidates(opts: { tags?: string[]; priceMax?: number; take?: number } = {}) {
+    // Diet and budget requirements survive agent retries and API fallback.
+    if (this.requiredTags === null) {
+      const tags: string[] = [];
+      if (this.huddle.kind === "place") {
+        for (const diet of ["vegetarian", "vegan", "gluten-free"]) {
+          if (!this.huddle.notes?.toLowerCase().includes(diet)) continue;
+          const matches = await this.findTags(diet);
+          const tag = matches.find((t) => [diet, `${diet}-friendly`, `${diet} friendly`].includes(t.name.toLowerCase()));
+          if (!tag) throw new ConstraintError(`Could not verify the ${diet} filter. Please revise the must-haves before deciding.`);
+          tags.push(tag.id);
+        }
+      }
+      this.requiredTags = tags;
+    }
+    const tags = [...new Set([...this.requiredTags, ...(opts.tags ?? [])])];
+    const budget = this.huddle.kind === "place" ? parsePrice(this.huddle.notes) : undefined;
+    const priceMax = budget === undefined ? opts.priceMax : Math.min(budget, opts.priceMax ?? budget);
     const take = Math.min(Math.max(opts.take ?? 20, 6), 40);
     this.shortlist = await insights({
       type: this.type,
       signal: this.groupSignal(),
       location: this.huddle.location,
-      tags: opts.tags,
-      priceMax: opts.priceMax,
+      tags,
+      priceMax,
       take,
     });
     this.filters = {
       type: this.type,
       ...(this.huddle.location && this.huddle.kind === "place" ? { location: this.huddle.location } : {}),
-      ...(opts.tags?.length ? { tags: opts.tags.join(",") } : {}),
-      ...(opts.priceMax ? { price_level_max: opts.priceMax } : {}),
+      ...(tags.length ? { tags: tags.join(",") } : {}),
+      ...(priceMax ? { price_level_max: priceMax } : {}),
     };
     this.ranked = [];
+    this.perMember = {};
+    this.majority = null;
+    this.picks = null;
+    this.tradeoffNote = "";
     this.log(
       "group_candidates",
       `${this.shortlist.length} candidates from the group's combined taste` +
-        (opts.tags?.length ? ` with tags ${opts.tags.join(", ")}` : "") +
-        (opts.priceMax ? `, price ≤ ${"$".repeat(opts.priceMax)}` : ""),
+        (tags.length ? ` with tags ${tags.join(", ")}` : "") +
+        (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : ""),
     );
     return this.shortlist;
   }
 
   async scoreMembers() {
-    if (!this.shortlist.length) throw new Error("No shortlist yet: call group_candidates first.");
+    if (!this.shortlist.length) return { ranked: [], majority: null };
     const ids = this.shortlist.map((c) => c.entity_id);
     const results = await Promise.all(
       this.huddle.members.map((m) =>
@@ -105,7 +129,7 @@ export class DecisionSession {
   }
 
   /** Where two members' tastes agree/disagree over tonight's shortlist. */
-  compareMembers(a: string, b: string) {
+  async compareMembers(a: string, b: string) {
     const find = (n: string) => this.huddle.members.find((m) => m.name.toLowerCase() === n.toLowerCase());
     const ma = find(a);
     const mb = find(b);
@@ -121,8 +145,18 @@ export class DecisionSession {
     const sharedTags = [...new Set(mb.picks.flatMap((p) => p.tags?.map((t) => t.name) ?? []))].filter((t) =>
       tagsA.has(t),
     );
+    let analysis: unknown = null;
+    if (qlooMode === "live") {
+      try {
+        analysis = await compareTastes(ma.picks.map((p) => p.entity_id), mb.picks.map((p) => p.entity_id), this.type);
+        this.log("compare_tastes", "Qloo Analysis Compare completed");
+      } catch {
+        this.log("compare_tastes", "Qloo comparison unavailable; using the scored shortlist");
+      }
+    }
     this.log("compare_tastes", `${ma.name} vs ${mb.name}: ${both.length} options both like`);
     return {
+      qloo_analysis: analysis,
       both_like: both.slice(0, 5),
       biggest_disagreements: split.map((r) => `${r.name} (${ma.name} ${pct(r.a)} vs ${mb.name} ${pct(r.b)})`),
       shared_taste_tags: sharedTags.slice(0, 8),
@@ -154,11 +188,13 @@ export class DecisionSession {
   }
 
   finalize(picks: Pick[], tradeoffNote: string) {
-    const known = new Set(this.ranked.map((r) => r.entity.entity_id));
-    this.picks = picks.filter((p) => known.has(p.entity_id)).slice(0, 3);
+    const expected = this.ranked.slice(0, 3);
+    if (!expected.length || picks.length !== expected.length || picks.some((p, i) => p.entity_id !== expected[i].entity.entity_id))
+      return "error: use exactly the top 3 (or all available) entity_ids in fair ranking order";
+    this.picks = picks;
     this.tradeoffNote = tradeoffNote;
     this.log("finalize", `${this.picks.length} picks`);
-    return this.picks.length ? "saved" : "error: entity_ids must come from the fair ranking";
+    return "saved";
   }
 
   toDecision(agent: "claude" | "rules"): Decision {

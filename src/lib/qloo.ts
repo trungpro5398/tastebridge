@@ -36,7 +36,7 @@ async function get(path: string, params: Record<string, string | number | boolea
     headers: { "X-Api-Key": KEY!, accept: "application/json" },
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
-  });
+  }).catch(() => { throw new QlooError("The taste service could not be reached."); });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new QlooError(`Qloo ${path} → ${res.status}: ${body.slice(0, 300)}`, res.status);
@@ -137,6 +137,7 @@ export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
     "filter.results.entities": q.candidates?.join(","),
     "filter.location.query": isPlace ? q.location : undefined,
     "filter.tags": q.tags?.join(","),
+    "operator.filter.tags": q.tags?.length ? "intersection" : undefined,
     "filter.price_level.max": isPlace ? q.priceMax : undefined,
     "feature.explainability": true,
     take: Math.min(q.take ?? 20, 50),
@@ -151,6 +152,17 @@ export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
       explain: parseExplain(query.explainability),
     };
   });
+}
+
+/** Qloo Analysis Compare; only called in live mode. */
+export async function compareTastes(a: string[], b: string[], type: EntityType) {
+  const data = (await get("/v2/analysis/compare", {
+    "a.signal.interests.entities": a.join(","),
+    "b.signal.interests.entities": b.join(","),
+    "filter.type": type,
+    take: 5,
+  })) as Raw;
+  return data.results ?? null;
 }
 
 // ---------- mock scoring: tag overlap, deterministic ----------

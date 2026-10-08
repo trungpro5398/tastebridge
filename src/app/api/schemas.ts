@@ -18,5 +18,8 @@ export const EntityIn = z.object({
 
 export const JoinHuddle = z.object({
   name: z.string().trim().min(1).max(40),
-  picks: z.array(EntityIn).min(1).max(5),
+  picks: z.array(EntityIn).min(1).max(3).refine(
+    (picks) => new Set(picks.map((p) => p.entity_id)).size === picks.length,
+    "Choose different favourites",
+  ),
 });

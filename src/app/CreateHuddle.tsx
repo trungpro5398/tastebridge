@@ -24,21 +24,31 @@ export default function CreateHuddle() {
       location: kind === "place" ? String(form.get("location") || "") || undefined : undefined,
       notes: String(form.get("notes") || "") || undefined,
     };
-    const res = await fetch("/api/huddles", { method: "POST", body: JSON.stringify(body) });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong");
+    try {
+      const res = await fetch("/api/huddles", { method: "POST", body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.id) throw new Error(data.error ?? "Could not create a huddle. Try again.");
+      router.push(`/h/${data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect. Try again.");
+    } finally {
       setBusy(null);
-      return;
     }
-    router.push(`/h/${data.id}`);
   }
 
   async function demo() {
     setBusy("demo");
-    const res = await fetch("/api/demo", { method: "POST" });
-    const data = await res.json();
-    router.push(`/h/${data.id}`);
+    setError("");
+    try {
+      const res = await fetch("/api/demo", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.id) throw new Error(data.error ?? "Could not start the demo. Try again.");
+      router.push(`/h/${data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect. Try again.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
