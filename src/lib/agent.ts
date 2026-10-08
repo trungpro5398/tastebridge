@@ -22,11 +22,12 @@ You have tools backed by Qloo's taste graph and a fairness scorer. Work like thi
 5. Call finalize with exactly the top 3 entity_ids (or all if fewer) from the latest fair_ranking, in its order. If a hard constraint rules one out, regenerate and rescore first.
 
 Writing rules for finalize:
-- Every claim must come from tool output: satisfaction percentages, the member favourites listed in driven_by_their_favourites, tags. Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given).
+- Every claim must come from tool output: taste_match percentages, the member favourites listed in driven_by_their_favourites, tags. Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given).
+- Qloo affinities describe what audiences with similar tastes tend to like. They are not predictions about an individual, so say "fans of X tend to rank this highly", never "you will love this".
 - headline: the option's name plus a 3–6 word hook.
 - why_group: one sentence on why it works for the whole group.
 - per_member reason: one short, warm sentence in second person, naming their favourite when available.
-- tradeoff_note: one or two sentences comparing with what an average vote would pick, naming who that would have left out. If they are the same option, say so.
+- tradeoff_note: one or two sentences comparing with what a simple average would pick, naming whose taste match would have been lowest there. If they are the same option, say so.
 Keep everything concise and friendly; this is shown on a phone.`;
 
 export function agentEnabled() {
@@ -63,7 +64,7 @@ export async function decide(huddle: Huddle): Promise<Decision> {
     betaZodTool({
       name: "score_for_members",
       description:
-        "Score the current shortlist against each member's own taste and rank it fairly (maximin, Nash tie-break). Returns per-member satisfaction and which favourites drove each match.",
+        "Score the current shortlist against each member's own taste and rank it fairly (maximin, Nash tie-break). Returns per-member taste_match (relative rank within the shortlist) and which favourites drove each match.",
       inputSchema: z.object({}),
       run: async () => {
         await s.scoreMembers();

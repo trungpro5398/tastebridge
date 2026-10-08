@@ -41,7 +41,8 @@ export default function Results({ decision }: { decision: Decision }) {
   return (
     <section className="space-y-4" aria-live="polite">
       <p className="text-xs text-muted">
-        Scores show each person&apos;s relative ranking within this shortlist, not a probability of enjoyment.
+        Taste match = how an option ranks within tonight&apos;s shortlist for each person&apos;s favourites, using Qloo&apos;s
+        audience-level affinities. It describes what people with similar tastes tend to like, not a prediction about any one person.
         {decision.mode.qloo === "mock" && " Demo data: venues are fictional and location is not applied."}
         {decision.mode.agent === "rules" && " Rules mode checks supported diet tags and dollar-sign budgets; review any other must-haves yourself."}
       </p>
@@ -75,21 +76,21 @@ export default function Results({ decision }: { decision: Decision }) {
 
       {decision.tradeoff_note && (
         <div className="rounded-2xl border border-line bg-card p-5">
-          <p className="text-sm font-medium">Why not just vote?</p>
+          <p className="text-sm font-medium">Why not just take the average?</p>
           <p className="mt-1 text-sm text-muted">{decision.tradeoff_note}</p>
           {differs && maj && (
             <div className="mt-4 grid grid-cols-2 gap-3 text-center text-sm">
               <div className="rounded-xl bg-soft p-3">
-                <p className="text-xs text-muted">Average vote</p>
+                <p className="text-xs text-muted">Simple average</p>
                 <p className="mt-0.5 truncate font-medium">{maj.entity.name}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{pct(maj.min_satisfaction)}</p>
-                <p className="text-xs text-muted">least-happy person</p>
+                <p className="text-xs text-muted">lowest taste match</p>
               </div>
               <div className="rounded-xl bg-accent/15 p-3">
                 <p className="text-xs text-muted">TasteBridge</p>
                 <p className="mt-0.5 truncate font-medium">{top.r.entity.name}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{pct(top.r.min_satisfaction)}</p>
-                <p className="text-xs text-muted">least-happy person</p>
+                <p className="text-xs text-muted">lowest taste match</p>
               </div>
             </div>
           )}
@@ -100,7 +101,7 @@ export default function Results({ decision }: { decision: Decision }) {
         <div className="grid gap-3 sm:grid-cols-2">
           {rest.map(({ p, r }) => (
             <article key={p.entity_id} className="rounded-2xl border border-line bg-card p-4">
-              <p className="text-xs text-muted">Also great · everyone ≥ {pct(r.min_satisfaction)}</p>
+              <p className="text-xs text-muted">Runner-up · lowest match {pct(r.min_satisfaction)}</p>
               <h3 className="mt-0.5 font-medium leading-snug">{p.headline}</h3>
               {r.entity.meta && <p className="text-xs text-muted">{r.entity.meta}</p>}
               <p className="mt-1 text-sm text-muted">{p.why_group}</p>
@@ -124,12 +125,48 @@ export default function Results({ decision }: { decision: Decision }) {
           ))}
         </ol>
         <p className="mt-3 text-xs text-muted">
-          Satisfaction = where an option ranks among tonight&apos;s shortlist for each person, scored by Qloo against
-          that person&apos;s own favourites. The pick maximises the least-happy person&apos;s score (Nash welfare
-          breaks ties). Data: {decision.mode.qloo === "live" ? "Qloo live" : "offline demo catalogue"} ·
-          Explanations: {decision.mode.agent === "claude" ? "Claude agent" : "rules"}.
+          Each person&apos;s taste match is the option&apos;s percentile within tonight&apos;s shortlist when Qloo scores
+          it against that person&apos;s favourites. The pick maximises the lowest match (Nash welfare breaks ties).
+          Explanations: {decision.mode.agent === "claude" ? "Claude agent, limited to tool output" : "rules"}.
         </p>
       </details>
+
+      {decision.qloo_calls && decision.qloo_calls.length > 0 && (
+        <details className="rounded-2xl border border-line bg-card p-4 text-sm">
+          <summary className="cursor-pointer font-medium">
+            Qloo evidence{" "}
+            <span className="font-normal text-muted">
+              ({decision.qloo_calls.length} request{decision.qloo_calls.length === 1 ? "" : "s"} ·{" "}
+              {decision.mode.qloo === "live" ? "live Qloo API" : "offline demo catalogue, not Qloo data"})
+            </span>
+          </summary>
+          <p className="mt-2 text-xs text-muted">
+            Exact requests behind this result. Entity id lists are summarised; no names or personal data are sent to
+            Qloo, and the API key never leaves the server.
+          </p>
+          <ol className="mt-3 space-y-3">
+            {decision.qloo_calls.map((c, i) => (
+              <li key={i} className="rounded-xl bg-soft p-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <code className="font-semibold text-foreground">GET {c.endpoint}</code>
+                  <span className="rounded-full border border-line px-1.5 text-muted">{c.source}</span>
+                  <span className="text-muted">
+                    → {c.results} result{c.results === 1 ? "" : "s"} · {c.ms} ms
+                  </span>
+                </div>
+                <dl className="mt-1.5 grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 gap-y-0.5 text-xs">
+                  {Object.entries(c.params).map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="truncate font-mono text-muted">{k}</dt>
+                      <dd className="break-all font-mono">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
     </section>
   );
 }

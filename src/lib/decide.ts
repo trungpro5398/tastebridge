@@ -123,7 +123,7 @@ export class DecisionSession {
     const top = ranked[0];
     this.log(
       "score_for_members",
-      `scored ${ids.length} candidates × ${this.huddle.members.length} members; fairest: ${top?.entity.name} (least-happy ${pct(top?.min_satisfaction ?? 0)}), average-vote: ${majority?.entity.name} (least-happy ${pct(majority?.min_satisfaction ?? 0)})`,
+      `scored ${ids.length} candidates × ${this.huddle.members.length} members; fairest: ${top?.entity.name} (lowest match ${pct(top?.min_satisfaction ?? 0)}), simple average: ${majority?.entity.name} (lowest match ${pct(majority?.min_satisfaction ?? 0)})`,
     );
     return { ranked, majority };
   }
@@ -171,18 +171,18 @@ export class DecisionSession {
         name: r.entity.name,
         meta: r.entity.meta,
         tags: r.entity.tags?.slice(0, 6).map((t) => t.name),
-        least_happy: pct(r.min_satisfaction),
+        lowest_taste_match: pct(r.min_satisfaction),
         average: pct(r.mean_satisfaction),
         per_member: r.scores.map((s) => ({
           member: s.member_name,
-          satisfaction: pct(s.satisfaction),
+          taste_match: pct(s.satisfaction),
           driven_by_their_favourites: s.because.map((b) => b.name),
         })),
       })),
       average_vote_would_pick: this.majority && {
         name: this.majority.entity.name,
-        least_happy: pct(this.majority.min_satisfaction),
-        unhappiest_member: [...this.majority.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0]?.member_name,
+        lowest_taste_match: pct(this.majority.min_satisfaction),
+        lowest_match_member: [...this.majority.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0]?.member_name,
       },
     };
   }
@@ -217,12 +217,12 @@ function rulePicks(ranked: RankedCandidate[]): Pick[] {
   return ranked.slice(0, 3).map((r) => ({
     entity_id: r.entity.entity_id,
     headline: r.entity.name,
-    why_group: `Everyone lands at ${pct(r.min_satisfaction)} or better; group average ${pct(r.mean_satisfaction)}.`,
+    why_group: `Every member's taste match is ${pct(r.min_satisfaction)} or higher; group average ${pct(r.mean_satisfaction)}.`,
     per_member: r.scores.map((s) => ({
       member_name: s.member_name,
       reason: s.because.length
-        ? `Matches your love of ${s.because.map((b) => b.name).join(" and ")} (${pct(s.satisfaction)} for you).`
-        : `A ${pct(s.satisfaction)} fit for you among tonight's options.`,
+        ? `${pct(s.satisfaction)} taste match for you, driven mostly by ${s.because.map((b) => b.name).join(" and ")}.`
+        : `A ${pct(s.satisfaction)} taste match for you among tonight's options.`,
     })),
   }));
 }
@@ -230,9 +230,9 @@ function rulePicks(ranked: RankedCandidate[]): Pick[] {
 function ruleTradeoff(fair?: RankedCandidate, majority?: RankedCandidate | null) {
   if (!fair || !majority) return "";
   if (fair.entity.entity_id === majority.entity.entity_id)
-    return `${fair.entity.name} is both the fairest option and the one an average vote would pick.`;
+    return `${fair.entity.name} is both the fairest option and the one a simple average would pick.`;
   const loser = [...majority.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0];
-  return `An average vote would pick ${majority.entity.name}, but ${loser.member_name} would only be at ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone at ${pct(fair.min_satisfaction)} or above.`;
+  return `A simple average would pick ${majority.entity.name}, but ${loser.member_name}'s taste match there is only ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone at ${pct(fair.min_satisfaction)} or higher.`;
 }
 
 export async function decideWithRules(huddle: Huddle): Promise<Decision> {

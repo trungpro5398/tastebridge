@@ -1,6 +1,6 @@
 import { decide } from "@/lib/agent";
 import { ConstraintError } from "@/lib/decide";
-import { QlooError } from "@/lib/qloo";
+import { QlooError, withQlooLog } from "@/lib/qloo";
 import { getHuddle, saveDecision } from "@/lib/store";
 
 export const maxDuration = 120;
@@ -13,7 +13,8 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/huddles/[id]/d
     return Response.json({ error: "Need at least 2 people to make a group decision" }, { status: 400 });
 
   try {
-    const result = await decide(huddle);
+    const { result: decision, calls } = await withQlooLog(() => decide(huddle));
+    const result = { ...decision, qloo_calls: calls };
     if (!result.ranked.length)
       return Response.json({ error: "No candidates matched. Try fewer constraints." }, { status: 422 });
     await saveDecision(id, result);

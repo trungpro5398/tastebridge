@@ -64,7 +64,7 @@ The fixture tests do not establish that an actual Qloo key or Claude model works
 
 Do not publish a multi-user serverless deployment with memory storage: huddle links can disappear between requests or instances. Check schema access, cross-browser joins and saved results against Supabase before publishing.
 
-Submission copy and remaining requirements are in [docs/SUBMISSION.md](docs/SUBMISSION.md). The [current challenge page](https://qloo.devpost.com/) requires an externally hosted, publicly usable app, a public source repository and an open-source license. A video is optional. This repository uses MIT.
+Project story, a redacted request → result walkthrough and known limitations are in [docs/STORY.md](docs/STORY.md). Submission checklist: [docs/SUBMISSION.md](docs/SUBMISSION.md). The [current challenge page](https://qloo.devpost.com/) requires an externally hosted, publicly usable app, a public source repository and an open-source license. A video is optional. This repository uses MIT.
 
 ## Notes
 
@@ -72,6 +72,7 @@ Submission copy and remaining requirements are in [docs/SUBMISSION.md](docs/SUBM
 - Qloo responses are cached in server memory for 30 minutes. No Qloo data is committed to this repo.
 - `compare_tastes` calls [`/v2/analysis/compare`](https://docs.qloo.com/reference/analysis-compare) in live mode and falls back to the scored shortlist if that optional endpoint fails.
 - Keys are only read on the server; the browser never sees them.
+- Every decision stores a redacted **Qloo evidence** log (endpoint, filters, tag choices, result counts, live/cache/offline) shown under each result. Member names are never sent to Qloo.
 
 ## Stack
 

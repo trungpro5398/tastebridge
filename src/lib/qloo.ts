@@ -3,8 +3,9 @@
  * Docs: docs/qloo/NOTES.md. All calls are server-side; the key never reaches the browser.
  */
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { MOCK_BY_ID, MOCK_ENTITIES } from "./mock-data";
-import type { Entity, EntityType, InsightEntity } from "./types";
+import type { Entity, EntityType, InsightEntity, QlooCall } from "./types";
 
 const BASE = process.env.QLOO_BASE_URL ?? "https://hackathon.api.qloo.com";
 const KEY = process.env.QLOO_API_KEY;
@@ -20,17 +21,55 @@ export class QlooError extends Error {
   }
 }
 
+// ---------- provenance: every Qloo request made during one decision (no key, no member names) ----------
+const calls = new AsyncLocalStorage<QlooCall[]>();
+
+/** Run fn and collect a redacted log of the Qloo requests it made. */
+export async function withQlooLog<T>(fn: () => Promise<T>): Promise<{ result: T; calls: QlooCall[] }> {
+  const log: QlooCall[] = [];
+  const result = await calls.run(log, fn);
+  return { result, calls: log };
+}
+
+type Params = Record<string, string | number | boolean | undefined>;
+
+/** Entity-id lists are summarised as counts; tag ids, types and filters stay readable. */
+function redact(params: Params): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === "") continue;
+    const s = String(v);
+    out[k] = k.endsWith(".entities") ? `${s.split(",").length} entity id(s)` : s;
+  }
+  return out;
+}
+
+function record(endpoint: string, params: Params, results: number, source: QlooCall["source"], started: number) {
+  calls.getStore()?.push({ endpoint, params: redact(params), results, source, ms: Date.now() - started });
+}
+
+function countResults(data: unknown) {
+  const r = (data as Raw | undefined)?.results as Raw | Raw[] | undefined;
+  if (Array.isArray(r)) return r.length;
+  for (const k of ["entities", "tags"]) if (Array.isArray(r?.[k])) return (r![k] as unknown[]).length;
+  return r ? 1 : 0;
+}
+
 // ---------- cache (server-side only, never persisted to the repo) ----------
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const g = globalThis as unknown as { __qlooCache?: Map<string, { at: number; data: unknown }> };
 const cache = (g.__qlooCache ??= new Map());
 
-async function get(path: string, params: Record<string, string | number | boolean | undefined>) {
+async function get(path: string, params: Params) {
+  const started = Date.now();
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") qs.set(k, String(v));
   const url = `${BASE}${path}?${qs}`;
   const hit = cache.get(url);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    record(path, params, countResults(hit.data), "cache", started);
+    return hit.data;
+  }
 
   const res = await fetch(url, {
     headers: { "X-Api-Key": KEY!, accept: "application/json" },
@@ -43,6 +82,7 @@ async function get(path: string, params: Record<string, string | number | boolea
   }
   const data = await res.json();
   cache.set(url, { at: Date.now(), data });
+  record(path, params, countResults(data), "qloo", started);
   return data;
 }
 
@@ -91,10 +131,13 @@ function parseExplain(node: unknown, out: Record<string, number> = {}, depth = 0
 // ---------- public API ----------
 export async function searchEntities(query: string, types?: EntityType[], take = 8): Promise<Entity[]> {
   if (qlooMode === "mock") {
+    const started = Date.now();
     const q = query.toLowerCase();
-    return MOCK_ENTITIES.filter(
+    const out = MOCK_ENTITIES.filter(
       (e) => e.name.toLowerCase().includes(q) && (!types?.length || types.includes(e.type as EntityType)),
     ).slice(0, take);
+    record("/search", { query, types: types?.join(","), take }, out.length, "offline", started);
+    return out;
   }
   const data = (await get("/search", { query, types: types?.join(","), take })) as Raw;
   return asArr(data.results).map(toEntity);
@@ -102,11 +145,14 @@ export async function searchEntities(query: string, types?: EntityType[], take =
 
 export async function findTags(query: string, take = 8): Promise<{ id: string; name: string }[]> {
   if (qlooMode === "mock") {
+    const started = Date.now();
     const names = new Set(MOCK_ENTITIES.flatMap((e) => e.tags!.map((t) => t.name)));
-    return [...names]
+    const out = [...names]
       .filter((n) => n.includes(query.toLowerCase()))
       .slice(0, take)
       .map((n) => ({ id: `urn:tag:mock:${n}`, name: n }));
+    record("/v2/tags", { "filter.query": query, take }, out.length, "offline", started);
+    return out;
   }
   const data = (await get("/v2/tags", { "filter.query": query, "feature.typo_tolerance": true, take })) as Raw;
   const results = data.results as Raw | Raw[] | undefined;
@@ -128,10 +174,8 @@ export type InsightsQuery = {
 
 export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
   if (!q.signal.length) return [];
-  if (qlooMode === "mock") return mockInsights(q);
-
   const isPlace = q.type === "urn:entity:place";
-  const data = (await get("/v2/insights", {
+  const params: Params = {
     "filter.type": q.type,
     "signal.interests.entities": q.signal.join(","),
     "filter.results.entities": q.candidates?.join(","),
@@ -141,7 +185,14 @@ export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
     "filter.price_level.max": isPlace ? q.priceMax : undefined,
     "feature.explainability": true,
     take: Math.min(q.take ?? 20, 50),
-  })) as Raw;
+  };
+  if (qlooMode === "mock") {
+    const started = Date.now();
+    const out = mockInsights(q);
+    record("/v2/insights", params, out.length, "offline", started);
+    return out;
+  }
+  const data = (await get("/v2/insights", params)) as Raw;
   const ents = asArr((data.results as Raw | undefined)?.entities);
   return ents.map((r) => {
     const query = (r.query ?? {}) as Raw;

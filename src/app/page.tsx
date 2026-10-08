@@ -3,7 +3,7 @@ import CreateHuddle from "./CreateHuddle";
 const steps = [
   { n: "1", title: "Start a huddle", body: "Dinner spot, movie or show. Add any must-haves, like “one vegetarian, under $$$”." },
   { n: "2", title: "Everyone adds 3 favourites", body: "Films, artists, shows, books: anything. Qloo maps taste across domains." },
-  { n: "3", title: "Get one fair pick", body: "The agent protects the least-happy person, and shows each friend why it fits them." },
+  { n: "3", title: "Get one fair pick", body: "The agent protects whoever has the lowest taste match, and shows each friend the Qloo evidence behind it." },
 ];
 
 export default function Home() {

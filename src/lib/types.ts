@@ -78,6 +78,15 @@ export type Pick = {
   per_member: { member_name: string; reason: string }[];
 };
 
+/** One Qloo request as shown to users/judges: endpoint, redacted params, result count. */
+export type QlooCall = {
+  endpoint: string;
+  params: Record<string, string>;
+  results: number;
+  source: "qloo" | "cache" | "offline";
+  ms: number;
+};
+
 export type Decision = {
   created_at: string;
   mode: { qloo: "live" | "mock"; agent: "claude" | "rules" };
@@ -88,4 +97,6 @@ export type Decision = {
   picks: Pick[];
   tradeoff_note: string;
   trace: { tool: string; summary: string }[];
+  /** redacted log of the Qloo requests behind this decision */
+  qloo_calls?: QlooCall[];
 };

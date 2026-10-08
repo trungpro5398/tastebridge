@@ -41,3 +41,21 @@ test("network failures become a handled Qloo error", async (t) => {
   t.mock.method(globalThis, "fetch", async () => { throw new TypeError("network down"); });
   await assert.rejects(insights({ type: "urn:entity:movie", signal: ["uncached"] }), QlooError);
 });
+
+test("provenance log records each request with entity ids redacted and no key", async (t) => {
+  const { insights, withQlooLog } = await qloo;
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ results: { entities: [{ entity_id: "c1", name: "One", query: { affinity: 0.5 } }] } }),
+  );
+  const { calls } = await withQlooLog(() =>
+    insights({ type: "urn:entity:movie", signal: ["secret-a", "secret-b"], candidates: ["c1"], take: 7 }),
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].endpoint, "/v2/insights");
+  assert.equal(calls[0].source, "qloo");
+  assert.equal(calls[0].results, 1);
+  assert.equal(calls[0].params["signal.interests.entities"], "2 entity id(s)");
+  assert.equal(calls[0].params["filter.type"], "urn:entity:movie");
+  const dump = JSON.stringify(calls);
+  assert.ok(!dump.includes("secret-a") && !dump.includes("test-fixture-only"));
+});
