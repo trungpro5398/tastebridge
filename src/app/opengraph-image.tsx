@@ -46,9 +46,9 @@ export default function Image() {
         </div>
         <div style={{ display: "flex", gap: 16 }}>
           {[
-            ["Mai", 67, "#2f6f5e"],
-            ["Josh", 47, "#d97706"],
-            ["Priya", 80, "#2f6f5e"],
+            ["Mai", 69, "#d97706"],
+            ["Josh", 46, "#d97706"],
+            ["Priya", 77, "#2f6f5e"],
             ["Leo", 100, "#2f6f5e"],
           ].map(([n, v, c]) => (
             <div key={n as string} style={{ display: "flex", flexDirection: "column", gap: 8, width: 240 }}>

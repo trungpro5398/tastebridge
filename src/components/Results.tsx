@@ -1,6 +1,11 @@
 import type { Decision, MemberScore, RankedCandidate } from "@/lib/types";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
+const TYPE_EMOJI: Record<string, string> = {
+  "urn:entity:place": "🍽️",
+  "urn:entity:movie": "🎬",
+  "urn:entity:tv_show": "📺",
+};
 
 function Bar({ s, highlight }: { s: MemberScore; highlight?: boolean }) {
   const v = Math.round(s.satisfaction * 100);
@@ -21,7 +26,9 @@ function Thumb({ c }: { c: RankedCandidate }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img src={c.entity.image} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
   ) : (
-    <span className="grid size-16 shrink-0 place-items-center rounded-xl bg-soft text-2xl">✦</span>
+    <span className="grid size-16 shrink-0 place-items-center rounded-xl bg-soft text-2xl">
+      {TYPE_EMOJI[c.entity.type] ?? "✦"}
+    </span>
   );
 }
 

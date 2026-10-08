@@ -26,9 +26,9 @@ const why = [
 ];
 
 const preview = [
-  { name: "Mai", v: 67, why: "Norah Jones, Spirited Away" },
-  { name: "Josh", v: 47, why: "Daft Punk" },
-  { name: "Priya", v: 80, why: "Salt Fat Acid Heat" },
+  { name: "Mai", v: 69, why: "Norah Jones, Spirited Away" },
+  { name: "Josh", v: 46, why: "Daft Punk" },
+  { name: "Priya", v: 77, why: "Salt Fat Acid Heat" },
   { name: "Leo", v: 100, why: "Radiohead" },
 ];
 
@@ -60,7 +60,7 @@ export default function Home() {
           </div>
           <div className="p-5">
             <p className="text-lg font-semibold">The Green Fig</p>
-            <p className="text-sm text-muted">Vegetarian-friendly · $$ · everyone ≥ 47%</p>
+            <p className="text-sm text-muted">Fitzroy · $$ · everyone ≥ 46%</p>
             <div className="mt-4 space-y-2.5">
               {preview.map((p) => (
                 <div key={p.name}>
@@ -79,7 +79,7 @@ export default function Home() {
               ))}
             </div>
             <p className="mt-4 rounded-xl bg-soft p-3 text-xs text-muted">
-              A simple average would pick the Board Game Pantry, but Josh&apos;s match there is only 33%.
+              A simple average would pick the Board Game Pantry, but Josh&apos;s match there drops to 39%.
             </p>
           </div>
         </div>

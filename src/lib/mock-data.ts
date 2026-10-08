@@ -61,13 +61,13 @@ const rows: Row[] = [
 
   // ---- Melbourne venues (fictional) ----
   ["mock-pl-01", "Lantern & Lime", "urn:entity:place", T("vietnamese cheap-eats vegetarian-friendly cozy"), "Footscray · $"],
-  ["mock-pl-02", "Osteria Nonna Rina", "urn:entity:place", T("italian cozy romance european family"), "Carlton · $$"],
+  ["mock-pl-02", "Osteria Nonna Rina", "urn:entity:place", T("italian cozy romance european family vegetarian-friendly"), "Carlton · $$"],
   ["mock-pl-03", "Neon Ramen Bar", "urn:entity:place", T("japanese late-night loud cheap-eats"), "CBD · $"],
   ["mock-pl-04", "The Green Fig", "urn:entity:place", T("vegetarian-friendly vegan cozy quiet"), "Fitzroy · $$"],
   ["mock-pl-05", "Smoke & Steel Grill", "urn:entity:place", T("bbq loud sports blockbuster"), "Richmond · $$"],
-  ["mock-pl-06", "Seoul Garden Pocha", "urn:entity:place", T("korean late-night loud feel-good"), "CBD · $$"],
+  ["mock-pl-06", "Seoul Garden Pocha", "urn:entity:place", T("korean late-night loud feel-good vegetarian-friendly"), "CBD · $$"],
   ["mock-pl-07", "Atelier Nineteen", "urn:entity:place", T("upscale foodie european quiet"), "Southbank · $$$$"],
-  ["mock-pl-08", "Bluestone Jazz Kitchen", "urn:entity:place", T("jazz live-music cozy romance"), "CBD · $$$"],
+  ["mock-pl-08", "Bluestone Jazz Kitchen", "urn:entity:place", T("jazz live-music cozy romance vegetarian-friendly"), "CBD · $$$"],
   ["mock-pl-09", "Taco Vecino", "urn:entity:place", T("latin cheap-eats feel-good loud vegetarian-friendly"), "Brunswick · $"],
   ["mock-pl-10", "Kintsugi Omakase", "urn:entity:place", T("japanese upscale quiet foodie"), "Collingwood · $$$$"],
   ["mock-pl-11", "Pixel Arcade Bar", "urn:entity:place", T("late-night nostalgic loud electronic"), "CBD · $$"],
@@ -76,8 +76,8 @@ const rows: Row[] = [
   ["mock-pl-14", "Cinema Dumpling House", "urn:entity:place", T("chinese cheap-eats family late-night"), "CBD · $"],
   ["mock-pl-15", "Rooftop Sixty", "urn:entity:place", T("cocktails upscale electronic late-night"), "CBD · $$$"],
   ["mock-pl-16", "Little Kyoto Café", "urn:entity:place", T("japanese cozy quiet vegetarian-friendly animation"), "Carlton · $$"],
-  ["mock-pl-17", "The Board Game Pantry", "urn:entity:place", T("cozy quirky family cheap-eats"), "Brunswick · $"],
-  ["mock-pl-18", "Mercado Rojo", "urn:entity:place", T("latin live-music loud feel-good"), "Fitzroy · $$"],
+  ["mock-pl-17", "The Board Game Pantry", "urn:entity:place", T("cozy quirky family cheap-eats vegetarian-friendly"), "Brunswick · $"],
+  ["mock-pl-18", "Mercado Rojo", "urn:entity:place", T("latin live-music loud feel-good vegetarian-friendly"), "Fitzroy · $$"],
 ];
 
 export const MOCK_ENTITIES: Entity[] = rows.map(([entity_id, name, type, tags, meta]) => ({

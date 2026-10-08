@@ -15,7 +15,7 @@ export async function POST() {
     title: "Friday dinner",
     kind: "place",
     location: "Melbourne",
-    notes: "Priya is vegetarian. Keep it under $$$.",
+    notes: "Keep it under $$$.",
   });
   for (const f of FRIENDS) {
     const picks = (await Promise.all(f.favourites.map((n) => searchEntities(n, undefined, 1).then((r) => r[0]))))

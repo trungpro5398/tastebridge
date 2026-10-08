@@ -54,7 +54,7 @@ npm run test:smoke       # creates disposable local huddles in all three categor
 npm run check:setup      # reports missing configuration without printing secrets
 ```
 
-The fixture tests do not establish that an actual Qloo key or Claude model works. With the supported vegetarian filter applied, the offline four-person demo currently picks The Green Fig, with a minimum relative rank of 50%; the mean baseline picks it too. Do not reuse the old 33%/47% figures.
+The fixture tests do not establish that an actual Qloo key works. In rules mode the offline four-person demo ("Keep it under $$$") picks The Green Fig with a lowest taste match of 46% (Josh). The mean baseline picks The Board Game Pantry, where Josh drops to 39%. Synthetic data; the Claude agent may choose different filters.
 
 ## Deploy (Vercel)
 

@@ -81,3 +81,11 @@ test("budget phrases: 'under' excludes the named level, 'max'/'up to' include it
   assert.equal(parsePrice("up to $$$"), 3);
   assert.equal(parsePrice("no budget"), undefined);
 });
+
+test("fair pick never leaves its least-matched member worse off than the mean-score baseline", async () => {
+  for (const notes of ["", "Keep it under $$$.", "Priya is vegetarian."]) {
+    const result = await decideWithRules(huddle(notes));
+    assert.ok(result.majority);
+    assert.ok(result.ranked[0].min_satisfaction >= result.majority.min_satisfaction, notes);
+  }
+});
