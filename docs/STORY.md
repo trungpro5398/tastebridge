@@ -32,7 +32,10 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 ## How we built it
 - **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, re-plans when someone is left behind, and writes explanations from tool output only. Diet and budget constraints survive retries. `finalize` enforces the scorer's top-three order, so the model can't override the maths.
 - **Fairness:** raw affinities aren't comparable between people, so each member's scores become within-person percentiles over tonight's shortlist. The pick is the **maximin** option, with **Nash welfare** breaking ties. A mean-score baseline is shown for contrast.
-- **App:** Next.js 16, TypeScript and Tailwind, with Supabase (Postgres, row-level security, server-only access), deployed on Vercel. It is mobile-first with shareable links, and huddle pages refresh automatically as friends join.
+- **App:** Next.js 16, TypeScript and Tailwind, with Supabase (Postgres, row-level security, server-only access), deployed on Vercel. It is mobile-first with shareable links and huddle pages refresh automatically as friends join. Each huddle link unfurls in group chats with its own preview image showing the pick.
+- **Watch the agent work:** the decide endpoint streams each real tool step (tags → shortlist → per-member scoring → explanations) to the UI as it happens. There are no fake loading messages.
+- **Responsible cost:** Claude runs are capped per day and per hashed IP. Over budget, the app still answers using rule-based explanations, and saved results are reused while the group is unchanged.
+- **Learning loop:** a one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
 - **Quality:** unit tests for minority protection, ties, constraints, empty results, invalid finalisation and Qloo request construction. CI runs on GitHub Actions.
 
 ## Challenges
