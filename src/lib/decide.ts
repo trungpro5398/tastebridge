@@ -371,7 +371,7 @@ export class DecisionSession {
         known_for: highlights(r.entity, 5),
         ...(r.entity.champion_of ? { brought_by: r.entity.champion_of } : {}),
         ...(this.wantsCalm() ? { tags_that_fit_the_calm_request: calmTags(r.entity) } : {}),
-        lowest_taste_match_among_those_who_care: pct(r.min_satisfaction),
+        lowest_match_among_people_with_a_clear_preference: pct(r.min_satisfaction),
         ...cared(r),
         average: pct(r.mean_satisfaction),
         per_member: r.scores.map((s) => ({
@@ -389,7 +389,7 @@ export class DecisionSession {
       ...(this.calmAlternative() ? { calm_request_note: { pick_has_no_calm_tag: true, closest_calm_option: this.calmAlternative() } } : {}),
       average_vote_would_pick: this.majority && {
         name: this.majority.entity.name,
-        lowest_taste_match_among_those_who_care: pct(this.majority.min_satisfaction),
+        lowest_match_among_people_with_a_clear_preference: pct(this.majority.min_satisfaction),
         lowest_match_member: [...this.majority.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0]?.member_name,
       },
     };
@@ -478,7 +478,7 @@ function withPersonalTops(ranked: RankedCandidate[], memberIds: string[]) {
 /** Lowest match among members who are not flexible tonight: the person the pick really protects. */
 function cared(r: RankedCandidate) {
   const low = r.scores.filter((s) => !s.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
-  return low ? { lowest_among_those_who_care: `${low.member_name} ${pct(low.satisfaction)}` } : {};
+  return low ? { protected_person: `${low.member_name} ${pct(low.satisfaction)}` } : {};
 }
 
 // ---------- rule-based explanations (no LLM) ----------

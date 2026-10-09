@@ -61,7 +61,7 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
             textAnchor="middle"
             className="fill-[var(--muted)] text-[12px]"
           >
-            Lowest match among people who care
+            Lowest match among people with a clear preference
           </text>
           {points.map((p) => {
             const cx = x(p.c.mean_satisfaction);
@@ -140,7 +140,7 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
             <tr>
               <th>Option</th>
               <th>Group average</th>
-              <th>Lowest match among people who care</th>
+              <th>Lowest match among people with a clear preference</th>
             </tr>
           </thead>
           <tbody>

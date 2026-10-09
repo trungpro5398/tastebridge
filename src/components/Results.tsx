@@ -144,7 +144,7 @@ function MeterRow({
               )}
               {s.flexible && (
                 <span
-                  title="Qloo sees only small differences between tonight's options for this person, so the fair pick focuses on people with clearer preferences."
+                  title="Based on tonight's options: Qloo sees only small differences between them for this person, so the fair pick focuses on people with clearer preferences. With a different list they may not be flexible."
                   className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted"
                 >
                   flexible tonight
