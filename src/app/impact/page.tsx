@@ -79,9 +79,9 @@ export default function ImpactPage() {
           </a>
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Fair pick ≠ average" value="43%" note="52 of 120 groups" />
-          <Stat label="Lift for least-matched" value="+13.2" note="points, where they differ" />
-          <Stat label="Cost to group average" value="−6.9" note="points, where they differ" />
+          <Stat label="Fair pick ≠ average" value="40%" note="48 of 120 groups" />
+          <Stat label="Lift for least-matched" value="+14.1" note="points, where they differ" />
+          <Stat label="Cost to group average" value="−6.6" note="points, where they differ" />
           <Stat label="Flexible tonight" value="37%" note="of people: Qloo saw little difference for them" />
         </div>
       </section>

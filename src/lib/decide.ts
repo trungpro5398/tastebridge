@@ -58,6 +58,11 @@ const AMBIENCE_WORDS: Record<string, string> = {
   romantic: "romantic", lively: "lively", bustling: "bustl", loud: "loud", noisy: "nois",
 };
 
+/** Qloo tag names on an option that support a calm/quiet request. */
+function calmTags(e: InsightEntity) {
+  return (e.tags ?? []).map((t) => t.name).filter((n) => /calm|quiet|peace|relax|intimate|coz|tranquil|seren/i.test(n));
+}
+
 export function ungroundedAmbience(text: string, tagNames: string[]) {
   const tags = tagNames.map((t) => t.toLowerCase());
   const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
@@ -349,6 +354,7 @@ export class DecisionSession {
         meta: r.entity.meta,
         known_for: highlights(r.entity, 5),
         ...(r.entity.champion_of ? { top_match_for: r.entity.champion_of } : {}),
+        ...(this.wantsCalm() ? { tags_that_fit_the_calm_request: calmTags(r.entity) } : {}),
         lowest_taste_match_among_those_who_care: pct(r.min_satisfaction),
         ...cared(r),
         average: pct(r.mean_satisfaction),
@@ -359,6 +365,11 @@ export class DecisionSession {
           driven_by_their_favourites: s.because.map((b) => b.name),
         })),
       })),
+      members: this.huddle.members.map((m) => {
+        const mine = (r: RankedCandidate) => r.scores.find((x) => x.member_id === m.id);
+        const best = [...this.ranked].sort((a, b) => (mine(b)?.percentile ?? 0) - (mine(a)?.percentile ?? 0))[0];
+        return { member: m.name, flexible_tonight: !!mine(this.ranked[0] ?? best)?.flexible, own_top_match: best?.entity.name };
+      }),
       average_vote_would_pick: this.majority && {
         name: this.majority.entity.name,
         lowest_taste_match_among_those_who_care: pct(this.majority.min_satisfaction),
@@ -373,6 +384,13 @@ export class DecisionSession {
     const expected = this.ranked.slice(0, 3);
     if (!expected.length || picks.length !== expected.length || picks.some((p, i) => p.entity_id !== expected[i].entity.entity_id))
       return "error: use exactly the top 3 (or all available) entity_ids in fair ranking order";
+    // notes may mention the group's own request ("the calm request"), so words from the brief are allowed there
+    const brief = [this.huddle.notes ?? "", ...this.refinements].join(" ").toLowerCase();
+    const allTags = [...expected, ...(this.majority ? [this.majority] : [])].flatMap((c) => (c.entity.tags ?? []).map((t) => t.name));
+    const notes = [tradeoffNote, changeNote, groupMessage].join(" ");
+    const badNotes = ungroundedAmbience(notes, allTags).filter((w) => !brief.includes(w));
+    if (badNotes.length)
+      return `error: the notes call something "${badNotes.join('", "')}", but no option's Qloo tags say so. Rewrite without that claim.`;
     for (const [i, p] of picks.entries()) {
       const tags = (expected[i].entity.tags ?? []).map((t) => t.name);
       const text = [p.headline, p.why_group, ...p.per_member.map((m) => m.reason)].join(" ");
@@ -406,6 +424,15 @@ export class DecisionSession {
       group_message: this.groupMessage || ruleMessage(this.huddle, this.ranked[0]),
       compatibility: groupCompatibility(this.ranked),
       shortlist_size: this.ranked.length,
+      personal_top: Object.fromEntries(
+        this.huddle.members.map((m) => {
+          const best = [...this.ranked].sort(
+            (a, b) =>
+              (b.scores.find((s) => s.member_id === m.id)?.percentile ?? 0) - (a.scores.find((s) => s.member_id === m.id)?.percentile ?? 0),
+          )[0];
+          return [m.id, best?.entity.name ?? ""];
+        }),
+      ),
     };
   }
 }
@@ -425,7 +452,7 @@ function rulePicks(ranked: RankedCandidate[]): Pick[] {
     per_member: r.scores.map((s) => ({
       member_name: s.member_name,
       reason: s.flexible
-        ? `Qloo sees little difference between tonight's options for your taste, so you're flexible tonight; any of these suits you about equally.`
+        ? `Qloo sees only small differences between tonight's options for your taste, so you're flexible tonight.`
         : s.because.length
           ? `${pct(s.satisfaction)} taste match for you, driven mostly by ${s.because.map((b) => b.name).join(" and ")}.`
           : `A ${pct(s.satisfaction)} taste match for you, from your overall taste.`,

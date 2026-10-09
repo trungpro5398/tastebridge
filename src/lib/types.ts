@@ -137,6 +137,8 @@ export type Decision = {
   compatibility?: import("./fairness").Compatibility;
   /** how many options were on the scored shortlist (the ranked list keeps only the top 10) */
   shortlist_size?: number;
+  /** member_id -> name of that member's own top option on tonight's shortlist */
+  personal_top?: Record<string, string>;
   /** Claude tokens spent on this decision */
   agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };

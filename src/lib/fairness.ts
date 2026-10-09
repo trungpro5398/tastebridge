@@ -66,7 +66,10 @@ export function rankFairly(
 
   const scoresByMember = members.map((m) => {
     const scored = new Map((perMember[m.id] ?? []).map((e) => [e.entity_id, e]));
-    const aff = shortlist.map((c) => scored.get(c.entity_id)?.affinity ?? 0);
+    // an option Qloo didn't score for this person counts as their median, not as their worst
+    const known = [...scored.values()].map((e) => e.affinity).sort((a, b) => a - b);
+    const median = known.length ? known[Math.floor(known.length / 2)] : 0;
+    const aff = shortlist.map((c) => scored.get(c.entity_id)?.affinity ?? median);
     const pct = percentiles(aff);
     const spread = aff.length ? Math.max(...aff) - Math.min(...aff) : 0;
     const decisiveness = Math.min(1, spread / FULL_SPREAD);

@@ -18,10 +18,11 @@ const EFFORT = (process.env.AGENT_EFFORT ?? "medium") as "low" | "medium" | "hig
 const SYSTEM = `You are TasteBridge, a facilitator that helps a group choose ONE option everyone can enjoy.
 
 You have tools backed by Qloo's taste graph and a fairness scorer. Work like this:
-1. Read the huddle's notes for hard constraints (diet, budget, vibe). Use find_tags to turn them into Qloo tag ids when useful, and price_level_max for budgets ("$" = 1 … "$$$$" = 4; "under $$$" means at most $$).
+1. Read the huddle's notes for hard constraints (diet, budget, vibe). Use find_tags to turn them into Qloo tag ids when useful, and price_level_max for budgets ("$" = 1 … "$$$$" = 4; "under $$$" means at most $$). Diet, budget and calm/quiet requests are already enforced in code; you don't need to look them up.
 2. Call group_candidates, then score_for_members.
-3. If the fairest option leaves someone who is NOT flexible_tonight below 50%, try once more with a larger shortlist or different soft preferences, then score again. Never remove a hard diet or budget requirement. Do not loop more than twice, and never repeat an identical group_candidates call (it returns the same shortlist).
-4. Optionally call compare_tastes for the two members who disagree most, to explain the trade-off.
+3. Call compare_tastes for the two members (not flexible_tonight) whose taste matches differ most across the top options, and use what it returns in tradeoff_note.
+4. Re-plan once if the person in lowest_among_those_who_care is below 50% at the fairest option: call find_tags for a cuisine or vibe their favourites suggest, then group_candidates with it in prefer_tag_ids and a reason naming them, then score_for_members. If that doesn't raise their match at the new fairest option, rebuild the first shortlist (repeat the first group_candidates arguments) and score again before finalizing. Never remove a hard requirement and never loop more than twice.
+Always give group_candidates and compare_tastes a short reason in plain English; the group sees it.
 If the brief has follow_up_requests, the group has already seen a pick and wants an adjustment. Treat the newest request as the priority and keep earlier ones:
 - "no X" / "not X": find_tags for X, then group_candidates with avoid_tag_ids (a hard exclusion).
 - a vibe or cuisine they want more of ("somewhere quieter", "more Italian"): find_tags, then prefer_tag_ids (a soft boost, not a filter).
@@ -36,7 +37,7 @@ When a retry keeps the same fairest option, say it was confirmed on a wider shor
 Writing rules for finalize:
 - Every claim must come from tool output: taste_match percentages, the member favourites listed in driven_by_their_favourites, and the option's known_for tags (you may mention one or two, e.g. a menu highlight or the ambience). Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given). Describe ambience (calm, cozy, lively, romantic, quiet…) only with words in that option's known_for tags; finalize rejects anything else. If the group asked for calm and no option is tagged calm, say that loud and bustling places were ruled out instead.
 - The shortlist mixes the group's shared taste with each member's own top matches (top_match_for). When an option is someone's top match, you may say so ("Linh's top match, and it still works for everyone").
-- Members marked flexible_tonight have nearly identical Qloo scores across options: say they are flexible tonight rather than inventing a reason; do not name them as the person who loses out. The fair ranking already ignores flexible members when finding the lowest match; when you cite it, use lowest_among_those_who_care (the person the pick protects).
+- Members marked flexible_tonight have nearly identical Qloo scores across options: say Qloo sees only small differences for their taste tonight, and you may mention their own_top_match; never say the pick "works fine" or "suits them" because of that, and don't name them as the person who loses out. The fair ranking already ignores flexible members when finding the lowest match; when you cite it, use lowest_among_those_who_care (the person the pick protects).
 - Qloo affinities describe what audiences with similar tastes tend to like. They are not predictions about an individual, so say "fans of X tend to rank this highly", never "you will love this".
 - headline: the option's name plus a 3–6 word hook.
 - why_group: one sentence on why it works for the whole group.
@@ -89,9 +90,11 @@ export async function decide(
         price_level_max: z.number().int().min(1).max(4).optional().describe("Only for places"),
         popularity_max: z.number().min(0.1).max(1).optional().describe("Lower = less mainstream; use ~0.6 for 'surprise us'"),
         release_year_min: z.number().int().min(1900).max(2100).optional().describe("Movies/TV only: released from this year"),
-        take: z.number().int().min(6).max(40).optional().describe("Shortlist size, default 20"),
+        take: z.number().int().min(6).max(40).optional().describe("Shortlist size, default 30"),
+        reason: z.string().max(160).optional().describe("Why this shortlist, in plain English (shown to the group)"),
       }),
-      run: async ({ tag_ids, avoid_tag_ids, prefer_tag_ids, area, max_km, price_level_max, popularity_max, release_year_min, take }) => {
+      run: async ({ tag_ids, avoid_tag_ids, prefer_tag_ids, area, max_km, price_level_max, popularity_max, release_year_min, take, reason }) => {
+        if (reason) s.log("plan", reason);
         const list = await s.generateCandidates({
           tags: tag_ids,
           avoidTags: avoid_tag_ids,
@@ -123,8 +126,15 @@ export async function decide(
     betaZodTool({
       name: "compare_tastes",
       description: "Compare two members over the scored shortlist: what both like, where they split, shared taste tags.",
-      inputSchema: z.object({ member_a: z.string(), member_b: z.string() }),
-      run: async ({ member_a, member_b }) => json(await s.compareMembers(member_a, member_b)),
+      inputSchema: z.object({
+        member_a: z.string(),
+        member_b: z.string(),
+        reason: z.string().max(160).optional().describe("Why these two, in plain English (shown to the group)"),
+      }),
+      run: async ({ member_a, member_b, reason }) => {
+        if (reason) s.log("plan", reason);
+        return json(await s.compareMembers(member_a, member_b));
+      },
     }),
     betaZodTool({
       name: "finalize",

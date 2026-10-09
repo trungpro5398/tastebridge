@@ -10,8 +10,8 @@ const R = 128;
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 /**
- * Each friend is a corner; each option sits at the match-weighted average of the corners, so it
- * drifts toward the people it suits. Options that suit everyone sit near the middle: the bridge.
+ * Each person is a corner. Each option is pushed away from the person with a preference whom it
+ * suits least, by how far behind the others it leaves them (fixed scale). The bridge stays central.
  */
 export default function TasteMap({ decision, colors }: { decision: Decision; colors: Record<string, string> }) {
   const [hover, setHover] = useState<RankedCandidate | null>(null);
@@ -31,15 +31,18 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
   const offset = (c: RankedCandidate) => {
     const sats = people.map((p) => c.scores.find((x) => x.member_id === p.id)?.satisfaction ?? 0);
     const mean = sats.reduce((a, b) => a + b, 0) / sats.length;
-    const worst = sats.indexOf(Math.min(...sats));
+    // flexible people barely mind, so an option is never pushed away from them
+    const carers = people.map((p, i) => i).filter((i) => !people[i].flexible);
+    const pool = carers.length ? carers : people.map((_, i) => i);
+    const worst = pool.reduce((w, i) => (sats[i] < sats[w] ? i : w), pool[0]);
     const gap = mean - sats[worst];
     const p = people[worst];
     return { dx: (-gap * (p.x - C)) / R, dy: (-gap * (p.y - C)) / R };
   };
-  const spread = Math.max(0.2, ...options.map((c) => Math.hypot(offset(c).dx, offset(c).dy)));
   const place = (c: RankedCandidate) => {
     const { dx, dy } = offset(c);
-    const k = (R * 0.8) / spread; // the most lopsided option reaches 80% of the way to the opposite corner
+    // fixed scale: a gap of 40 points between someone and the group average reaches the far corner
+    const k = Math.min(R * 0.9 / Math.max(Math.hypot(dx, dy), 1e-6), R / 0.4);
     return { x: C + dx * k, y: C + dy * k };
   };
   const short = (n: string) => (n.length > 18 ? `${n.slice(0, 17).trimEnd()}…` : n);
@@ -59,7 +62,8 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
         <h3 className="font-display text-lg font-semibold">Taste map: where the bridge is</h3>
         <p className="text-sm text-muted">
           Each person is a corner. Every option is pushed away from the person it suits least, further the more it
-          leaves them behind. Options that leave nobody behind stay in the middle: that is the bridge.
+          leaves them behind; flexible people don&apos;t push. Options that leave nobody behind stay in the middle:
+          that is the bridge.
         </p>
       </figcaption>
       <div className="relative mx-auto mt-3 max-w-[420px]">

@@ -32,7 +32,7 @@ const why = [
   },
   {
     title: "Shows its working",
-    body: "Every number comes from Qloo, with the exact requests listed and the favourite behind a match when one clearly stands out. Claude writes the words, never the numbers, and can't describe a vibe Qloo doesn't tag.",
+    body: "Every score is computed from Qloo data, with the exact requests listed and the favourite behind a match when one clearly stands out. Claude writes the words, never the numbers, and can't describe a vibe Qloo doesn't tag.",
   },
   {
     title: "Taste, not questionnaires",
@@ -105,11 +105,11 @@ export default function Home() {
       </section>
 
       <section className="rounded-3xl bg-brand p-6 text-brand-ink sm:p-10">
-        <h2 className="font-display text-3xl font-semibold tracking-tight">Why groups trust the pick</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Tested on 120 random groups</h2>
         <p className="mt-2 max-w-2xl opacity-80">
-          We ran 120 random groups through live Qloo data. In 43% of them, a simple average would have picked
-          something one person matched poorly. TasteBridge&apos;s pick lifted that person by 13 points on average, for a
-          7-point drop in the group average.
+          We ran 120 random groups through live Qloo data. In 40% of them, the fair pick differed from what a simple
+          average would choose. There, the least-matched person who cares gained 14 points, for a 7-point drop in the
+          group average. Real groups&apos; results appear on the Impact page as they come in.
         </p>
         <dl className="mt-6 grid gap-6 sm:grid-cols-3">
           {why.map((w) => (
@@ -153,9 +153,11 @@ export default function Home() {
 }
 
 → { "pick": { "name": "Archie's All Day",
-              "lowest_match": 0.58, ... },
+              "meta": "Fitzroy · $$",
+              "lowest_match": 0.544, ... },
     "simple_average_pick": { ... },
-    "provenance": { "qloo": "live", ... } }`}
+    "provenance": { "qloo": "live",
+                    "calls": [ 7 requests ] } }`}
         </pre>
       </section>
 

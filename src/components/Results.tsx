@@ -37,7 +37,7 @@ function broughtBy(names?: string[]) {
 function rankText(percentile: number, n: number) {
   const r = Math.round((1 - percentile) * (n - 1)) + 1;
   const suffix = r % 10 === 1 && r % 100 !== 11 ? "st" : r % 10 === 2 && r % 100 !== 12 ? "nd" : r % 10 === 3 && r % 100 !== 13 ? "rd" : "th";
-  return `${r}${suffix} of ${n} options`;
+  return `${r}${suffix} of ${n}`;
 }
 
 /** Secondary views, rendered only when opened (the map needs a visible container). */
@@ -116,11 +116,14 @@ function MeterRow({
   color,
   reason,
   protectedRow,
+  ownTop,
 }: {
   s: MemberScore;
   color: string;
   reason?: string;
   protectedRow?: boolean;
+  /** this person's own top option tonight, when it isn't the pick */
+  ownTop?: string;
 }) {
   const v = Math.round(s.satisfaction * 100);
   return (
@@ -138,7 +141,7 @@ function MeterRow({
               )}
               {s.flexible && (
                 <span
-                  title="Qloo sees little difference between tonight's options for this person, so the fair pick focuses on people with clearer preferences."
+                  title="Qloo sees only small differences between tonight's options for this person, so the fair pick focuses on people with clearer preferences."
                   className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted"
                 >
                   flexible tonight
@@ -156,6 +159,7 @@ function MeterRow({
         </div>
       </div>
       {reason && <p className="mt-1.5 pl-11 text-sm text-muted">{reason}</p>}
+      {ownTop && <p className="mt-1 pl-11 text-xs text-muted">Your own top match tonight: {ownTop}</p>}
     </li>
   );
 }
@@ -204,16 +208,19 @@ function Compatibility({
     <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-lg font-semibold">Your group&apos;s taste compatibility</h3>
-        <p>
-          <span className="font-display text-2xl font-semibold tabular-nums">{v}%</span>{" "}
-          <span className="text-sm text-muted">{compatLabel(c.score)}</span>
-        </p>
+        <p className="font-display text-xl font-semibold">{compatLabel(c.score)}</p>
       </div>
-      <div className="mt-2 h-2 rounded-full bg-soft" aria-hidden>
+      <div className="relative mt-2 h-2 rounded-full bg-soft" aria-hidden>
         <div className="h-full rounded-full bg-brand" style={{ width: `${v}%` }} />
+        <div className="absolute inset-y-[-3px] left-1/2 w-px bg-muted" />
       </div>
+      <p className="mt-1 flex justify-between text-xs text-muted" aria-hidden>
+        <span>opposite tastes</span>
+        <span>unrelated</span>
+        <span>same tastes</span>
+      </p>
       <p className="mt-2 text-sm text-muted">
-        How similarly you rank tonight&apos;s options (50% means unrelated tastes).{" "}
+        How similarly you rank tonight&apos;s options.{" "}
         {c.score < 0.5
           ? "With tastes this different, an average tends to leave someone out; that is what the fair pick is for."
           : c.score < 0.7
@@ -334,6 +341,7 @@ export default function Results({
                 color={color(s.member_id)}
                 reason={reasons.get(s.member_name)}
                 protectedRow={top.r.scores.length > 1 && s.member_id === low?.member_id}
+                ownTop={decision.personal_top?.[s.member_id] !== top.r.entity.name ? decision.personal_top?.[s.member_id] : undefined}
               />
             ))}
           </ul>
@@ -355,29 +363,40 @@ export default function Results({
                 <p className="mt-0.5 truncate font-semibold">{maj.entity.name}</p>
                 <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                   <Avatar name={majLow.member_name} color={color(majLow.member_id)} size="sm" />
-                  {majLow.member_name} drops to
-                  <b className="font-display text-xl tabular-nums">{pct(majLow.satisfaction)}</b>
+                  {decision.shortlist_size && majLow.percentile !== undefined ? (
+                    <>
+                      only {majLow.member_name}&apos;s
+                      <b className="font-display text-xl">{rankText(majLow.percentile, decision.shortlist_size)}</b>
+                    </>
+                  ) : (
+                    <>
+                      {majLow.member_name} drops to
+                      <b className="font-display text-xl tabular-nums">{pct(majLow.satisfaction)}</b>
+                    </>
+                  )}
                 </p>
-                {decision.shortlist_size && majLow.percentile !== undefined && (
-                  <p className="mt-1 text-xs text-muted">
-                    {rankText(majLow.percentile, decision.shortlist_size)} for {majLow.member_name}&apos;s taste
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-muted">{pct(majLow.satisfaction)} taste match</p>
               </div>
               <div className="rounded-2xl bg-accent/15 p-4">
                 <p className="text-sm text-muted">TasteBridge picks</p>
                 <p className="mt-0.5 truncate font-semibold">{top.r.entity.name}</p>
                 <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                   {low && <Avatar name={low.member_name} color={color(low.member_id)} size="sm" />}
-                  nobody who cares below
-                  <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
+                  {decision.shortlist_size && majLow ? (
+                    <>
+                      {majLow.member_name}&apos;s
+                      <b className="font-display text-xl">
+                        {rankText(top.r.scores.find((x) => x.member_id === majLow.member_id)?.percentile ?? 0, decision.shortlist_size)}
+                      </b>
+                    </>
+                  ) : (
+                    <>
+                      nobody who cares below
+                      <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
+                    </>
+                  )}
                 </p>
-                {decision.shortlist_size && low?.percentile !== undefined && majLow && (
-                  <p className="mt-1 text-xs text-muted">
-                    and {rankText(top.r.scores.find((x) => x.member_id === majLow.member_id)?.percentile ?? 0, decision.shortlist_size)} for{" "}
-                    {majLow.member_name}
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-muted">nobody who cares below {pct(top.r.min_satisfaction)}</p>
               </div>
             </div>
           )}
@@ -429,8 +448,10 @@ export default function Results({
         </div>
       )}
 
-      <details id="how" open={decision.mode.agent === "claude"} className="border-t border-line pt-5 text-sm">
-        <summary className="cursor-pointer font-display text-base font-semibold">How the agent decided</summary>
+      <details id="how" className="border-t border-line pt-5 text-sm">
+        <summary className="cursor-pointer font-display text-base font-semibold">
+          How the agent decided <span className="font-sans text-sm font-normal text-muted">({decision.trace.length} steps)</span>
+        </summary>
         <ol className="mt-3 space-y-2">
           {decision.trace.map((t, i) => (
             <li key={i} className="flex gap-3">
