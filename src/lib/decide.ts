@@ -94,6 +94,7 @@ export class DecisionSession {
   privateExclusions: string[] = [];
   /** the words themselves, for checking tag names and venue names locally */
   privateTerms: string[] = [];
+  creditChangedPick = false;
   location?: string;
   changeNote = "";
   /** Claude token usage for this decision (set by the agent) */
@@ -349,6 +350,10 @@ export class DecisionSession {
       }),
     );
     const { ranked, majority } = rankFairly(this.shortlist, this.huddle.members, this.perMember, credits);
+    // did last time's credit actually change tonight's pick?
+    this.creditChangedPick =
+      Object.keys(credits).length > 0 &&
+      rankFairly(this.shortlist, this.huddle.members, this.perMember).ranked[0]?.entity.entity_id !== ranked[0]?.entity.entity_id;
     const before = this.lastTop;
     this.ranked = ranked;
     this.majority = majority;
@@ -429,6 +434,7 @@ export class DecisionSession {
         return { member: m.name, flexible_tonight: !!mine(this.ranked[0] ?? best)?.flexible, own_top_match: best?.entity.name };
       }),
       ...(this.calmAlternative() ? { calm_request_note: { pick_has_no_calm_tag: true, closest_calm_option: this.calmAlternative() } } : {}),
+      ...(this.huddle.carried?.length ? { last_time_credit_changed_the_pick: this.creditChangedPick } : {}),
       average_vote_would_pick: this.majority && {
         name: this.majority.entity.name,
         lowest_match_among_people_with_a_clear_preference: pct(this.majority.min_satisfaction),
@@ -508,6 +514,7 @@ export class DecisionSession {
       calm_alternative: this.calmAlternative(),
       private_exclusions: this.privateExclusions.length ? this.privateExclusions : undefined,
       carried_over: this.huddle.carried?.length ? this.huddle.carried : undefined,
+      carried_changed_pick: this.huddle.carried?.length ? this.creditChangedPick : undefined,
       personal_top: Object.fromEntries(
         this.huddle.members.map((m) => {
           const best = [...this.ranked].sort(

@@ -326,7 +326,10 @@ export default function Results({
               {decision.carried_over
                 .map((c) => `${c.member_name} gave way at ${c.previous_pick} (${pct(c.previous_match)})`)
                 .join("; ")}
-              , so close calls tonight lean their way.
+              .{" "}
+              {decision.carried_changed_pick
+                ? "That small credit tipped tonight's close call their way."
+                : "Tonight's pick was already the kindest option for everyone, so the credit didn't change it."}
             </p>
           )}
           {decision.private_exclusions && (

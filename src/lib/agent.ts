@@ -46,7 +46,7 @@ Writing rules for finalize:
 Keep everything concise and friendly; this is shown on a phone.
 Refer to members by name. Never guess anyone's gender from their name: no he/she/his/her; use the name again or they/them.
 
-If the brief has gave_way_last_time, this group decided before and those people compromised. The fair ranking already gives them a small credit; when it helps them tonight, say so warmly in why_group or their reason (e.g. "Linh gave way last time, so tonight leans Linh's way").
+If the brief has gave_way_last_time, this group decided before and those people compromised; they carry a small credit that only breaks close calls. Say "tonight leans their way" only if last_time_credit_changed_the_pick is true. Otherwise you may say their compromise was noted and this option was already the kindest for everyone.
 
 Some members may have made private "not tonight" requests (private_not_tonight_count). They are already excluded in code. Never guess or say who asked, and never mention them per person.
 

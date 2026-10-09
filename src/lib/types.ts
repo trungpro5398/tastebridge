@@ -156,6 +156,8 @@ export type Decision = {
   private_exclusions?: string[];
   /** fairness carried over from the group's earlier outings */
   carried_over?: CarriedOver[];
+  /** whether that credit changed tonight's pick */
+  carried_changed_pick?: boolean;
   /** Claude tokens spent on this decision */
   agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };
