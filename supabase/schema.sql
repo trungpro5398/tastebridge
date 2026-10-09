@@ -48,3 +48,14 @@ alter table kv enable row level security;
 
 -- Separate demo huddles from real ones on the impact page.
 alter table huddles add column if not exists is_demo boolean not null default false;
+
+-- One row per answer (append-only, so concurrent answers never overwrite each other).
+create table if not exists feedback (
+  id          bigint generated always as identity primary key,
+  huddle_id   text not null references huddles(id) on delete cascade,
+  q           text not null check (q in ('worked','clear','went')),
+  a           text not null check (a in ('yes','no')),
+  at          timestamptz not null default now()
+);
+create index if not exists feedback_huddle_idx on feedback(huddle_id);
+alter table feedback enable row level security;

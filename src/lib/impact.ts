@@ -8,6 +8,7 @@ type Row = {
   result: Decision | null;
   feedback: Huddle["feedback"] | null;
   members: { count: number }[] | null;
+  answers: { q: "worked" | "clear" | "went"; a: "yes" | "no" }[] | null;
 };
 
 export type Rate = { yes: number; n: number };
@@ -31,7 +32,7 @@ export async function impactStats(): Promise<ImpactStats | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("huddles")
-    .select("kind, is_demo, result, feedback, members(count)")
+    .select("kind, is_demo, result, feedback, members(count), answers:feedback(q, a)")
     .order("created_at", { ascending: false })
     .limit(2000);
   if (error || !data) return null;
@@ -48,7 +49,7 @@ export async function impactStats(): Promise<ImpactStats | null> {
   };
   const rate = (q: Answer["q"]): Rate => {
     const answers = real
-      .flatMap((r) => (r.feedback ?? []).map(normalise))
+      .flatMap((r) => [...(r.feedback ?? []).map(normalise), ...(r.answers ?? [])])
       .filter((f): f is Answer => f !== null && f.q === q);
     return { yes: answers.filter((f) => f.a === "yes").length, n: answers.length };
   };

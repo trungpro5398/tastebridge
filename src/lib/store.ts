@@ -85,18 +85,15 @@ export type FeedbackQuestion = "worked" | "clear" | "went";
 
 /** One-tap answers after a decision ("did it work?", "were the % clear?", "did you go?"); no personal data. */
 export async function addFeedback(huddleId: string, q: FeedbackQuestion, a: "yes" | "no") {
-  const entry = { q, a, at: new Date().toISOString() };
   if (!sb) {
     const h = mem.get(huddleId);
     if (!h) throw new Error("not found");
-    h.feedback = [...(h.feedback ?? []), entry].slice(-50);
+    h.feedback = [...(h.feedback ?? []), { q, a, at: new Date().toISOString() }].slice(-50);
     return;
   }
-  const { data, error } = await sb.from("huddles").select("feedback").eq("id", huddleId).maybeSingle();
-  if (error || !data) throw new Error(error?.message ?? "not found");
-  const next = [...((data.feedback as unknown[]) ?? []), entry].slice(-50);
-  const upd = await sb.from("huddles").update({ feedback: next }).eq("id", huddleId);
-  if (upd.error) throw new Error(upd.error.message);
+  // append-only rows: concurrent answers can't overwrite each other
+  const { error } = await sb.from("feedback").insert({ huddle_id: huddleId, q, a });
+  if (error) throw new Error(error.message);
 }
 
 // ---------- tiny server-side cache (kv table), e.g. resolved demo favourites ----------
