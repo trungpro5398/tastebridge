@@ -111,10 +111,19 @@ export type Compatibility = {
   furthest?: { a: string; b: string; r: number };
 };
 
-/** How alike the group's tastes are: Pearson correlation of members' percentiles across the shortlist. */
+/**
+ * How alike the group's tastes are: Pearson correlation of members' matches across the shortlist.
+ * A flexible member's scores are mostly noise, so each pair is weighted by both people's
+ * decisiveness, and "taste twins" / "furthest apart" are only named among people who care tonight.
+ */
 export function groupCompatibility(ranked: RankedCandidate[]): Compatibility | undefined {
   if (ranked.length < 4 || (ranked[0]?.scores.length ?? 0) < 2) return undefined;
-  const members = ranked[0].scores.map((s) => ({ id: s.member_id, name: s.member_name }));
+  const members = ranked[0].scores.map((s) => ({
+    id: s.member_id,
+    name: s.member_name,
+    d: s.decisiveness ?? 1,
+    flexible: !!s.flexible,
+  }));
   const series = members.map((m) => ranked.map((r) => r.scores.find((s) => s.member_id === m.id)?.satisfaction ?? 0));
   const corr = (x: number[], y: number[]) => {
     const mx = x.reduce((a, b) => a + b, 0) / x.length;
@@ -130,11 +139,20 @@ export function groupCompatibility(ranked: RankedCandidate[]): Compatibility | u
     return dx && dy ? num / Math.sqrt(dx * dy) : 0;
   };
   const pairs: Compatibility["pairs"] = [];
+  const named: Compatibility["pairs"] = [];
+  let sum = 0;
+  let weight = 0;
   for (let i = 0; i < members.length; i++)
-    for (let j = i + 1; j < members.length; j++)
-      pairs.push({ a: members[i].name, b: members[j].name, r: +corr(series[i], series[j]).toFixed(2) });
-  const mean = pairs.reduce((a, p) => a + p.r, 0) / pairs.length;
-  const sorted = [...pairs].sort((p, q) => q.r - p.r);
+    for (let j = i + 1; j < members.length; j++) {
+      const pair = { a: members[i].name, b: members[j].name, r: +corr(series[i], series[j]).toFixed(2) };
+      const w = Math.max(0.05, members[i].d * members[j].d);
+      pairs.push(pair);
+      sum += w * pair.r;
+      weight += w;
+      if (!members[i].flexible && !members[j].flexible) named.push(pair);
+    }
+  const mean = sum / weight;
+  const sorted = [...named].sort((p, q) => q.r - p.r);
   return {
     score: +((mean + 1) / 2).toFixed(2),
     pairs,

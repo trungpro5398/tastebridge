@@ -130,3 +130,18 @@ test("distance filter drops venues far from where the shortlist clusters", () =>
   assert.equal(droppedFar, 1);
   assert.ok(kept.every((k) => k.id !== 9));
 });
+
+test("an identical shortlist request is reused instead of re-querying Qloo", async () => {
+  const session = new DecisionSession(huddle(""));
+  await session.generateCandidates({ priceMax: 3 });
+  await session.scoreMembers();
+  const steps = session.trace.length;
+  const ranked = session.ranked;
+  await session.generateCandidates({ priceMax: 3 });
+  assert.equal(session.repeated, true);
+  await session.scoreMembers();
+  assert.equal(session.ranked, ranked);
+  assert.equal(session.trace.length, steps + 1);
+  await session.generateCandidates({ priceMax: 2 });
+  assert.equal(session.repeated, false);
+});

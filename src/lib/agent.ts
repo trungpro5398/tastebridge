@@ -20,7 +20,7 @@ const SYSTEM = `You are TasteBridge, a facilitator that helps a group choose ONE
 You have tools backed by Qloo's taste graph and a fairness scorer. Work like this:
 1. Read the huddle's notes for hard constraints (diet, budget, vibe). Use find_tags to turn them into Qloo tag ids when useful, and price_level_max for budgets ("$" = 1 … "$$$$" = 4; "under $$$" means at most $$).
 2. Call group_candidates, then score_for_members.
-3. If the fairest option leaves someone below 50%, try once more with a larger shortlist or different soft preferences, then score again. Never remove a hard diet or budget requirement. Do not loop more than twice.
+3. If the fairest option leaves someone who is NOT flexible_tonight below 50%, try once more with a larger shortlist or different soft preferences, then score again. Never remove a hard diet or budget requirement. Do not loop more than twice, and never repeat an identical group_candidates call (it returns the same shortlist).
 4. Optionally call compare_tastes for the two members who disagree most, to explain the trade-off.
 If the brief has follow_up_requests, the group has already seen a pick and wants an adjustment. Treat the newest request as the priority and keep earlier ones:
 - "no X" / "not X": find_tags for X, then group_candidates with avoid_tag_ids (a hard exclusion).
@@ -34,7 +34,7 @@ Then score_for_members and finalize. In change_note, say in one sentence what ch
 
 Writing rules for finalize:
 - Every claim must come from tool output: taste_match percentages, the member favourites listed in driven_by_their_favourites, and the option's known_for tags (you may mention one or two, e.g. a menu highlight or the ambience). Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given).
-- Members marked flexible_tonight have nearly identical Qloo scores across options: say they are flexible tonight rather than inventing a reason; do not name them as the person who loses out.
+- Members marked flexible_tonight have nearly identical Qloo scores across options: say they are flexible tonight rather than inventing a reason; do not name them as the person who loses out. When you cite a worst-case match, use lowest_among_those_who_care (the person the pick protects), not a flexible member's score.
 - Qloo affinities describe what audiences with similar tastes tend to like. They are not predictions about an individual, so say "fans of X tend to rank this highly", never "you will love this".
 - headline: the option's name plus a 3–6 word hook.
 - why_group: one sentence on why it works for the whole group.
@@ -100,7 +100,11 @@ export async function decide(
           yearMin: release_year_min,
           take,
         });
-        return json({ count: list.length, sample: list.slice(0, 8).map((c) => c.name) });
+        return json({
+          count: list.length,
+          sample: list.slice(0, 8).map((c) => c.name),
+          ...(s.repeated ? { note: "Identical to the previous request: same shortlist and scores. Change the options or finalize." } : {}),
+        });
       },
     }),
     betaZodTool({

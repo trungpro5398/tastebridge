@@ -88,11 +88,25 @@ export class DecisionSession {
     if (hit) return hit;
     const tags = await findTags(query);
     this.tagCache.set(key, tags);
-    this.log("find_tags", `"${query}" → ${tags.map((t) => t.name).join(", ") || "none"}`);
+    const names = [...new Set(tags.map((t) => t.name))];
+    const close = names.filter((n) => n.toLowerCase().includes(key));
+    const shown = (close.length ? close : names).slice(0, 5);
+    this.log("find_tags", `"${query}" → ${shown.join(", ") || "no matching Qloo tags"}`);
     return tags;
   }
 
+  private lastRequest = "";
+  /** True when the last group_candidates call repeated the previous request exactly. */
+  repeated = false;
+
   async generateCandidates(opts: CandidateOptions = {}) {
+    const request = JSON.stringify(opts, Object.keys(opts).sort());
+    this.repeated = request === this.lastRequest && this.shortlist.length > 0 && this.picks === null;
+    if (this.repeated) {
+      this.log("group_candidates", "same request as before, so the same shortlist is reused (no extra Qloo calls)");
+      return this.shortlist;
+    }
+    this.lastRequest = request;
     // Diet and budget requirements survive agent retries and API fallback.
     if (this.requiredTags === null) {
       const tags: string[] = [];
@@ -176,6 +190,7 @@ export class DecisionSession {
 
   async scoreMembers() {
     if (!this.shortlist.length) return { ranked: [], majority: null };
+    if (this.repeated && this.ranked.length) return { ranked: this.ranked, majority: this.majority };
     const ids = this.shortlist.map((c) => c.entity_id);
     const results = await Promise.all(
       this.huddle.members.map((m) =>
@@ -244,6 +259,7 @@ export class DecisionSession {
         meta: r.entity.meta,
         known_for: highlights(r.entity, 5),
         lowest_taste_match: pct(r.min_satisfaction),
+        ...cared(r),
         average: pct(r.mean_satisfaction),
         per_member: r.scores.map((s) => ({
           member: s.member_name,
@@ -293,6 +309,12 @@ export class DecisionSession {
       compatibility: groupCompatibility(this.ranked),
     };
   }
+}
+
+/** Lowest match among members who are not flexible tonight: the person the pick really protects. */
+function cared(r: RankedCandidate) {
+  const low = r.scores.filter((s) => !s.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
+  return low ? { lowest_among_those_who_care: `${low.member_name} ${pct(low.satisfaction)}` } : {};
 }
 
 // ---------- rule-based explanations (no LLM) ----------

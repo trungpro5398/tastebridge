@@ -100,3 +100,18 @@ test("drivers only name favourites that clearly stand out", async () => {
   assert.deepEqual(drivers({ f1: 0.34, f2: 0.33, f3: 0.33 }, names), []);
   assert.deepEqual(drivers({ f1: 0.6, f2: 0.2, f3: 0.2 }, names).map((d) => d.name), ["Amélie"]);
 });
+
+test("compatibility never names flexible people as taste twins", async () => {
+  const { groupCompatibility } = await import("../src/lib/fairness");
+  const flex = [true, false, false, true];
+  const mk = (sats: number[]) =>
+    sats.map((v, i) => ({ member_id: `m${i}`, member_name: "ABCD"[i], affinity: v, satisfaction: v, decisiveness: flex[i] ? 0.2 : 1, flexible: flex[i], because: [] }));
+  const ranked = [
+    [0.5, 1, 0, 0.5], [0.52, 0.75, 0.25, 0.52], [0.49, 0.5, 0.5, 0.49], [0.51, 0.25, 0.75, 0.51], [0.48, 0, 1, 0.48],
+  ].map((sats, i) => ({ entity: { entity_id: `e${i}`, name: `E${i}`, type: "x", affinity: 0, explain: {} }, scores: mk(sats), min_satisfaction: 0, mean_satisfaction: 0, nash: 0 }));
+  const c = groupCompatibility(ranked)!;
+  assert.deepEqual([c.closest?.a, c.closest?.b], ["B", "C"]);
+  assert.equal(c.furthest, undefined);
+  // A and D move in lockstep (r = 1) but barely care; the score follows B vs C (r = -1)
+  assert.ok(c.score < 0.3);
+});
