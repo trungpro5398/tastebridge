@@ -53,8 +53,8 @@ export default function Home() {
             group will like, and picks the dinner spot or movie that leaves nobody behind.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <DemoButton label="Demo: four friends who disagree" />
-            <DemoButton scenario="family" variant="secondary" label="Demo: three generations, one lunch" />
+            <DemoButton scenario="family" label="Demo: three generations, one lunch" />
+            <DemoButton variant="secondary" label="Demo: four friends, Friday dinner" />
           </div>
           <a href="#start" className="mt-3 inline-block font-medium text-brand underline-offset-4 hover:underline">
             Or start your own huddle

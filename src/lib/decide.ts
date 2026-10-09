@@ -34,6 +34,8 @@ export type CandidateOptions = {
 };
 
 const DEFAULT_MAX_KM = 15;
+/** Each person brings their own top matches to the table, so the shortlist is not only compromises. */
+export const CHAMPIONS_EACH = 3;
 
 export type Step = { tool: string; summary: string };
 export type OnStep = (step: Step) => void;
@@ -136,23 +138,43 @@ export class DecisionSession {
     const location = isPlace && opts.area ? `${opts.area}, ${this.huddle.location ?? ""}`.replace(/, $/, "") : this.huddle.location;
     const maxKm = isPlace ? (opts.maxKm ?? DEFAULT_MAX_KM) : undefined;
 
-    const raw = await insights({
-      type: this.type,
-      signal: this.groupSignal(),
-      location,
-      tags,
-      avoidTags: avoid,
-      preferTags: prefer,
-      priceMax,
-      popularityMax: opts.popularityMax,
-      yearMin: opts.yearMin,
-      // ask for more so the venue-type and distance filters still leave a full shortlist
-      take: isPlace ? Math.min(take + 20, 50) : take,
-    });
-    const dining = isPlace ? raw.filter(isDiningVenue) : raw;
+    const query = (signal: string[], n: number) =>
+      insights({
+        type: this.type,
+        signal,
+        location,
+        tags,
+        avoidTags: avoid,
+        preferTags: prefer,
+        priceMax,
+        popularityMax: opts.popularityMax,
+        yearMin: opts.yearMin,
+        // ask for more so the venue-type and distance filters still leave a full shortlist
+        take: isPlace ? Math.min(n + 20, 50) : n,
+      });
+    const members = this.huddle.members.filter((m) => m.picks.length);
+    const [raw, ...own] = await Promise.all([
+      query(this.groupSignal(), take),
+      ...(members.length > 1 ? members.map((m) => query(m.picks.map((p) => p.entity_id), CHAMPIONS_EACH * 2)) : []),
+    ]);
+    const usable = (list: InsightEntity[]) => (isPlace ? list.filter(isDiningVenue) : list);
+    const dining = usable(raw);
     const droppedNonDining = raw.length - dining.length;
-    const { kept, droppedFar } = maxKm ? withinRadius(dining, maxKm) : { kept: dining, droppedFar: 0 };
+    // everyone's own top matches go on the table first, then the group's shared-taste options
+    const championOf = new Map<string, string[]>();
+    const tops: InsightEntity[] = [];
+    own.forEach((list, i) => {
+      for (const e of usable(list).slice(0, CHAMPIONS_EACH)) {
+        championOf.set(e.entity_id, [...(championOf.get(e.entity_id) ?? []), members[i].name]);
+        if (!tops.some((t) => t.entity_id === e.entity_id)) tops.push(e);
+      }
+    });
+    const merged = [...tops, ...dining.filter((e) => !championOf.has(e.entity_id))].map((e) =>
+      championOf.has(e.entity_id) ? { ...e, champion_of: championOf.get(e.entity_id) } : e,
+    );
+    const { kept, droppedFar } = maxKm ? withinRadius(merged, maxKm) : { kept: merged, droppedFar: 0 };
     this.shortlist = kept.slice(0, take);
+    const brought = this.shortlist.filter((e) => e.champion_of).length;
     this.location = location;
     this.filters = {
       type: this.type,
@@ -174,7 +196,7 @@ export class DecisionSession {
     const label = (ids: string[]) => ids.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")).join(", ");
     this.log(
       "group_candidates",
-      `${this.shortlist.length} candidates from the group's combined taste` +
+      `${this.shortlist.length} candidates: ${brought ? `${brought} brought by individual members' own top matches, the rest ` : ""}from the group's combined taste` +
         (opts.area ? ` around ${opts.area}` : "") +
         (tags.length ? `, must be: ${label(tags)}` : "") +
         (opts.avoidTags?.length ? `, avoiding: ${label(opts.avoidTags)}` : "") +
@@ -258,6 +280,7 @@ export class DecisionSession {
         name: r.entity.name,
         meta: r.entity.meta,
         known_for: highlights(r.entity, 5),
+        ...(r.entity.champion_of ? { top_match_for: r.entity.champion_of } : {}),
         lowest_taste_match: pct(r.min_satisfaction),
         ...cared(r),
         average: pct(r.mean_satisfaction),

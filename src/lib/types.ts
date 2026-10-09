@@ -42,6 +42,8 @@ export type InsightEntity = Entity & {
   popularity?: number;
   /** input entity_id -> contribution (0..1) */
   explain: Record<string, number>;
+  /** members who brought this option to the table (it is among their own top Qloo matches) */
+  champion_of?: string[];
 };
 
 export type Member = {

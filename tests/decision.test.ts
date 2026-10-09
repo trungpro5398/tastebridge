@@ -145,3 +145,13 @@ test("an identical shortlist request is reused instead of re-querying Qloo", asy
   await session.generateCandidates({ priceMax: 2 });
   assert.equal(session.repeated, false);
 });
+
+test("each member's own top matches are on the table and labelled", async () => {
+  const session = new DecisionSession(huddle(""));
+  const list = await session.generateCandidates({ take: 6 });
+  const brought = list.filter((e) => e.champion_of?.length);
+  assert.ok(brought.length > 0);
+  for (const name of ["Friend 0", "Friend 1"]) assert.ok(brought.some((e) => e.champion_of!.includes(name)), name);
+  // brought options come first, so a small shortlist still contains them
+  assert.ok(list.slice(0, brought.length).every((e) => e.champion_of));
+});

@@ -26,8 +26,14 @@ const metaText = (meta?: string) => meta?.split(" · ").join(", ");
 
 /** The person the fair pick protects: the lowest match among people who actually have a preference tonight. */
 function lowest(scores: MemberScore[]) {
-  const decisive = scores.filter((s) => !s.flexible);
-  return [...(decisive.length ? decisive : scores)].sort((a, b) => a.satisfaction - b.satisfaction)[0];
+  return scores.filter((s) => !s.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
+}
+
+/** "Linh's top match" / "Top match for Mai and Leo": who put this option on the table. */
+function broughtBy(names?: string[]) {
+  if (!names?.length) return "";
+  if (names.length === 1) return `${names[0]}'s top match`;
+  return `Top match for ${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
 function KnownFor({ c, n = 4 }: { c: RankedCandidate; n?: number }) {
@@ -272,6 +278,11 @@ export default function Results({
             {(hook || top.r.entity.meta) && (
               <p className="mt-1 text-muted">{[hook, metaText(top.r.entity.meta)].filter(Boolean).join(". ")}</p>
             )}
+            {top.r.entity.champion_of && (
+              <p className="mt-2 inline-block rounded-full bg-soft px-2.5 py-0.5 text-xs font-medium">
+                {broughtBy(top.r.entity.champion_of)}
+              </p>
+            )}
           </div>
           <p className="max-w-prose">{top.p.why_group}</p>
           <KnownFor c={top.r} />
@@ -296,6 +307,12 @@ export default function Results({
               </p>
             </details>
           </div>
+          {top.r.scores.length > 1 && !low && (
+            <p className="px-3 pb-2 text-sm text-muted">
+              Everyone is flexible tonight: Qloo sees little difference between these options for any of you, so this
+              is simply the best all-round fit.
+            </p>
+          )}
           <ul className="space-y-1">
             {top.r.scores.map((s) => (
               <MeterRow
@@ -339,7 +356,7 @@ export default function Results({
                 <p className="text-sm text-muted">TasteBridge picks</p>
                 <p className="mt-0.5 truncate font-semibold">{top.r.entity.name}</p>
                 <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                  <Avatar name={low.member_name} color={color(low.member_id)} size="sm" />
+                  {low && <Avatar name={low.member_name} color={color(low.member_id)} size="sm" />}
                   nobody below
                   <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
                 </p>
@@ -370,7 +387,11 @@ export default function Results({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{r.entity.name}</p>
-                      {r.entity.meta && <p className="text-sm text-muted">{metaText(r.entity.meta)}</p>}
+                      {(r.entity.meta || r.entity.champion_of) && (
+                        <p className="text-sm text-muted">
+                          {[metaText(r.entity.meta), broughtBy(r.entity.champion_of)].filter(Boolean).join(". ")}
+                        </p>
+                      )}
                     </div>
                     <MiniMeter scores={r.scores} colors={colors} />
                   </div>
