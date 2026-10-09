@@ -15,7 +15,7 @@ Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
    - `group_candidates` builds a shortlist from the whole group's combined taste (`/v2/insights`, round-robin signal so no one dominates).
    - `score_for_members` re-scores **the same shortlist against each person's own favourites** (`/v2/insights` + `filter.results.entities` + `feature.explainability`).
    - It ranks options with a **fairness rule**, can retry with a larger shortlist or different soft preferences, optionally runs `compare_tastes` on two members, then calls `finalize`. Diet and budget requirements survive retries. Finalization enforces the scorer's top-three order.
-4. The result shows a satisfaction bar per person, each person's reason ("matches your love of *Spirited Away*"), and **what a plain average vote would have picked and who it would have left out**.
+4. The result shows a taste-match bar per person, the favourites behind each match, a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
 
 ### The fairness rule
 
@@ -37,9 +37,9 @@ npm run dev
 
 With no keys at all the app still runs end to end: Qloo calls use an offline demo catalogue (fictional venues, `src/lib/mock-data.ts`) and explanations use rules. Add `QLOO_API_KEY` for live Qloo data and `ANTHROPIC_API_KEY` for the agent.
 
-Click **"Try a demo with 4 friends who disagree"** on the home page for a pre-filled huddle.
+Click **"Try the 30-second demo"** on the home page for a pre-filled huddle of four friends with clashing tastes.
 
-Rules mode recognises vegetarian, vegan, gluten-free tag requirements and dollar-sign budgets such as `under $$`. It rejects unavailable diet tags. Other free-text requirements need manual review. Demo places are fictional Melbourne venues; mock mode does not apply geographic filtering. Live Qloo and Claude integrations still require validation with actual credentials.
+Rules mode recognises vegetarian, vegan, gluten-free tag requirements and dollar-sign budgets such as `under $$`. It rejects unavailable diet tags. Other free-text requirements need manual review. In offline mode, demo places are fictional Melbourne venues and no geographic filtering is applied.
 
 ## Verification
 
@@ -54,7 +54,13 @@ npm run test:smoke       # creates disposable local huddles in all three categor
 npm run check:setup      # reports missing configuration without printing secrets
 ```
 
-The fixture tests do not establish that an actual Qloo key works. In rules mode the offline four-person demo ("Keep it under $$$") picks The Green Fig with a lowest taste match of 46% (Josh). The mean baseline picks The Board Game Pantry, where Josh drops to 39%. Synthetic data; the Claude agent may choose different filters.
+**Live verification (9 Oct 2026, hackathon API + Claude Sonnet 5.5, production):**
+- The demo huddle (dinner, Melbourne, "Keep it under $$$") made 5 Qloo calls: a group shortlist of 20 restaurants plus 4 per-member scorings.
+- The fair pick was **Archie's All Day** (Fitzroy), with a lowest taste match of 68%. The simple average picked **Chotto Motto**, where Josh's match drops to 58%.
+- The agent run took about 20 s, streamed step by step.
+- Movie and TV huddles were verified the same way.
+
+In offline mode (no keys), rules pick The Green Fig: Josh's match is 46% there, versus 39% at the average pick.
 
 ## Deploy (Vercel)
 
@@ -68,8 +74,9 @@ Project story, a redacted request → result walkthrough and known limitations a
 
 ## Notes
 
-- The Claude agent uses `claude-opus-5-5` with adaptive thinking and **server-side fallbacks** (`fallbacks: "default"`), so if the primary model declines, the API retries on a fallback model in the same call. If the Claude API is unreachable, the app falls back to rule-based explanations instead of failing.
-- Qloo responses are cached in server memory for 30 minutes. No Qloo data is committed to this repo.
+- The Claude agent uses `claude-sonnet-5-5` (override with `ANTHROPIC_MODEL`) with adaptive thinking and **server-side fallbacks** (`fallbacks: "default"`), so if the primary model declines, the API retries on a fallback model in the same call. If the Claude API is unreachable, the app falls back to rule-based explanations instead of failing.
+- Qloo calls go through a shared limiter: 2 concurrent requests, spaced, with a bounded retry on 429. Responses are cached in server memory for 30 minutes. Demo favourites are resolved once and cached in Supabase. No Qloo data is committed to this repo.
+- Dinner huddles require Qloo's `urn:tag:category:place:restaurant` tag, so bars and shops are excluded. Diet must-haves add `urn:tag:genre:place:restaurant:vegetarian` (or vegan / gluten-free) with intersection semantics.
 - `compare_tastes` calls [`/v2/analysis/compare`](https://docs.qloo.com/reference/analysis-compare) in live mode and falls back to the scored shortlist if that optional endpoint fails.
 - Keys are only read on the server; the browser never sees them.
 - The decide endpoint streams the agent's real steps (NDJSON) so users watch it work. It reuses the saved result while the group is unchanged.

@@ -1,6 +1,6 @@
 # TasteBridge submission preparation — 9 October 2026
 
-Status (9 Oct 2026): deployed at https://tastebridge-brown.vercel.app with Supabase persistence (project `tastebridge`, Sydney; RLS on, anon key has no access). Verified on production: demo huddle create → 4 joins → decide → result persisted and re-read across requests. Qloo and Claude still run in offline/rules mode until `QLOO_API_KEY` and `ANTHROPIC_API_KEY` are added on Vercel. Do not describe this as a live Qloo deployment until the provider checks pass.
+Status (9 Oct 2026): **live**. https://tastebridge-brown.vercel.app runs on the Qloo hackathon API and Claude Sonnet 5.5, with Supabase persistence. Verified on production: demo create → live Qloo shortlist (20 restaurants) → per-member scoring → agent explanations → persisted result, plus movie and TV huddles. Submission is still a Devpost draft until the owner confirms.
 
 ## Current submission requirements
 

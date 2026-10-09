@@ -13,8 +13,8 @@ TasteBridge helps a group pick **one** dinner spot, movie or TV show that everyo
 ## How Qloo makes it work
 Without Qloo there is no way to know how a fan of *Mad Max* and Daft Punk will feel about a vegetarian café. TasteBridge uses Qloo for every number:
 
-- `/search`: cross-domain autocomplete for favourites.
-- `/v2/tags`: turns must-haves into tag filters.
+- `/search`: cross-domain autocomplete for favourites (movies, TV, artists, books, podcasts, games).
+- `/v2/tags`: turns must-haves into tag filters. Dinner huddles also require `urn:tag:category:place:restaurant`, so bars and shops are excluded.
 - `/v2/insights` with `signal.interests.entities`: the group shortlist, seeded round-robin so no member dominates.
 - `/v2/insights` with `filter.results.entities` and `feature.explainability`: re-scores the **same** candidates for each member, and tells us which of that member's favourites drove the match.
 - `/v2/analysis/compare`: explains where two members' tastes overlap and where they split.
@@ -28,6 +28,14 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 2. `GET /v2/insights?filter.type=urn:entity:place&signal.interests.entities=<12 favourites, round-robin>&filter.tags=<vegetarian tag>&operator.filter.tags=intersection&filter.price_level.max=3&filter.location.query=Melbourne&feature.explainability=true` returns the group shortlist.
 3. Four calls of `GET /v2/insights?...&signal.interests.entities=<one member's 3 favourites>&filter.results.entities=<shortlist ids>` score the same shortlist once per member. `query.affinity` is converted to a within-member percentile, and `query.explainability` names which favourite drove each match.
 4. Maximin and Nash pick the winner. The UI shows each member's match, the favourite behind it, and the simple-average alternative.
+
+**Real run (production, 9 Oct 2026):**
+- Four friends: Mai (*Spirited Away*, Norah Jones, *Amélie*), Josh (*Mad Max: Fury Road*, *John Wick*, Daft Punk), Priya (*Ratatouille*, *The Bear*, *Salt Fat Acid Heat*) and Leo (*Parasite*, *Severance*, Radiohead).
+- Must-have: "Keep it under $$$".
+- Qloo returned 20 Melbourne restaurants.
+- A simple average picks Chotto Motto (Collingwood), where Josh's taste match is only 58%.
+- TasteBridge picks **Archie's All Day** (Fitzroy), lifting the lowest match to 68%: Mai 79%, Josh 68%, Priya 100%, Leo 74%. Each person sees which of their favourites drove the match.
+- Five Qloo calls, about 20 seconds end to end.
 
 ## How we built it
 - **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, re-plans when someone is left behind, and writes explanations from tool output only. Diet and budget constraints survive retries. `finalize` enforces the scorer's top-three order, so the model can't override the maths.
@@ -53,6 +61,7 @@ npm test
 With no keys it runs fully offline on a fictional demo catalogue (clearly labelled in the UI). Add `QLOO_API_KEY` for live Qloo data, `ANTHROPIC_API_KEY` for the agent, and Supabase variables for persistence.
 
 ## Known limitations
+- The hackathon key is rate limited. TasteBridge sends at most 2 concurrent requests, retries 429s a bounded number of times, and caches responses and demo favourites.
 - Qloo affinities describe what audiences with similar tastes tend to like. A taste match is a **relative rank within one shortlist**, not a prediction of how a specific person will feel, and the app says so next to every score.
 - The simple-average comparison is a mean-score baseline, not a real ballot.
 - With small shortlists (for example after strict diet filters), percentiles are coarse.
