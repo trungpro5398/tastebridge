@@ -1,4 +1,5 @@
-import { initials, memberColor } from "@/lib/members";
+import CompareBars from "@/components/CompareBars";
+import { memberColor } from "@/lib/members";
 import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
@@ -65,31 +66,12 @@ export default function Home() {
             <span className="font-display text-lg font-semibold">Sunday lunch, three generations</span>
             <span className="text-xs text-muted">a real run on live Qloo data</span>
           </figcaption>
-          <div className="mt-5 grid grid-cols-2 gap-4">
-            {example.map((o) => (
-              <div key={o.name} className={`rounded-2xl p-3 ${o.fair ? "bg-accent/15" : "bg-soft"}`}>
-                <p className="text-xs text-muted">{o.label}</p>
-                <p className="mt-0.5 min-h-[2.5rem] text-sm font-semibold leading-tight">{o.name}</p>
-                <div className="mt-3 flex h-28 items-end gap-2" role="img" aria-label={PEOPLE.map((n, i) => `${n} ${o.v[i]}%`).join(", ")}>
-                  {o.v.map((v, i) => (
-                    <div key={PEOPLE[i]} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                      <span className={`text-[11px] tabular-nums ${!o.fair && i === 0 ? "font-semibold text-foreground" : "text-muted"}`}>{v}</span>
-                      <div
-                        className="w-full rounded-t-md"
-                        style={{ height: `${v}%`, background: memberColor(i), opacity: !o.fair && i !== 0 ? 0.45 : 1 }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-1.5 flex gap-2">
-                  {PEOPLE.map((n, i) => (
-                    <span key={n} className="flex-1 text-center text-[11px] font-semibold" style={{ color: memberColor(i) }}>
-                      {initials(n)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="mt-5">
+            <CompareBars
+              options={example.map((o) => ({ label: o.label, name: o.name, values: o.v, fair: o.fair }))}
+              people={PEOPLE.map((name, i) => ({ name, color: memberColor(i) }))}
+              highlight={0}
+            />
           </div>
           <p className="mt-4 text-sm text-muted">
             The average leaves Grandma Lan at 37%. The fair pick lifts her to 57%, and nobody ends up lower than that.

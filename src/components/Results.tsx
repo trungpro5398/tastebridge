@@ -2,6 +2,7 @@ import type React from "react";
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import FairnessChart from "@/components/FairnessChart";
+import CompareBars from "@/components/CompareBars";
 import TasteMap from "@/components/TasteMap";
 import ShortlistMap from "@/components/ShortlistMap";
 import { highlights } from "@/lib/highlights";
@@ -31,6 +32,11 @@ function broughtBy(names?: string[]) {
   if (!names?.length) return "";
   if (names.length === 1) return `Brought by ${names[0]}`;
   return `Brought by ${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+/** One bar value (0–100) per person, in the fair pick's member order. */
+function barsOf(c: RankedCandidate) {
+  return c.scores.map((s) => Math.round(s.satisfaction * 100));
 }
 
 /** "12th of 24 options": the honest reading of a within-shortlist percentile. */
@@ -327,6 +333,33 @@ export default function Results({
           </div>
         </div>
 
+        {maj && (
+          <div className="border-t border-line p-5 sm:p-7">
+            <h3 className="font-display font-semibold">
+              {differs ? "Why not just take the average?" : "The simple average agrees"}
+            </h3>
+            {differs && (
+              <div className="mt-3">
+                <CompareBars
+                  options={[
+                    { label: "A simple average picks", name: maj.entity.name, values: barsOf(maj), fair: false },
+                    { label: "TasteBridge picks", name: top.r.entity.name, values: barsOf(top.r), fair: true },
+                  ]}
+                  people={top.r.scores.map((s) => ({ name: s.member_name, color: color(s.member_id) }))}
+                  highlight={majLow ? top.r.scores.findIndex((s) => s.member_id === majLow.member_id) : undefined}
+                />
+                {majLow && decision.shortlist_size && majLow.percentile !== undefined && (
+                  <p className="mt-2 text-sm text-muted">
+                    {maj.entity.name} is only {majLow.member_name}&apos;s {rankText(majLow.percentile, decision.shortlist_size)};{" "}
+                    {top.r.entity.name} is their{" "}
+                    {rankText(top.r.scores.find((x) => x.member_id === majLow.member_id)?.percentile ?? 0, decision.shortlist_size)}.
+                  </p>
+                )}
+              </div>
+            )}
+            {decision.tradeoff_note && <p className="mt-2 max-w-prose text-sm text-muted">{decision.tradeoff_note}</p>}
+          </div>
+        )}
         <div className="border-t border-line p-3 sm:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2 px-3 pb-1">
             <h3 className="font-display font-semibold">How well it fits each of you</h3>
@@ -363,59 +396,6 @@ export default function Results({
       </article>
 
       {afterPick}
-
-      {maj && (
-        <div className="rounded-3xl bg-soft/70 p-5 sm:p-6">
-          <h3 className="font-display text-lg font-semibold">
-            {differs ? "Why not just take the average?" : "The simple average agrees"}
-          </h3>
-          {decision.tradeoff_note && <p className="mt-1 max-w-prose text-muted">{decision.tradeoff_note}</p>}
-          {differs && majLow && (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-card p-4">
-                <p className="text-sm text-muted">A simple average would pick</p>
-                <p className="mt-0.5 truncate font-semibold">{maj.entity.name}</p>
-                <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                  <Avatar name={majLow.member_name} color={color(majLow.member_id)} size="sm" />
-                  {decision.shortlist_size && majLow.percentile !== undefined ? (
-                    <>
-                      only {majLow.member_name}&apos;s
-                      <b className="font-display text-xl">{rankText(majLow.percentile, decision.shortlist_size)}</b>
-                    </>
-                  ) : (
-                    <>
-                      {majLow.member_name} drops to
-                      <b className="font-display text-xl tabular-nums">{pct(majLow.satisfaction)}</b>
-                    </>
-                  )}
-                </p>
-                <p className="mt-1 text-xs text-muted">{pct(majLow.satisfaction)} taste match</p>
-              </div>
-              <div className="rounded-2xl bg-accent/15 p-4">
-                <p className="text-sm text-muted">TasteBridge picks</p>
-                <p className="mt-0.5 truncate font-semibold">{top.r.entity.name}</p>
-                <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                  {low && <Avatar name={low.member_name} color={color(low.member_id)} size="sm" />}
-                  {decision.shortlist_size && majLow ? (
-                    <>
-                      {majLow.member_name}&apos;s
-                      <b className="font-display text-xl">
-                        {rankText(top.r.scores.find((x) => x.member_id === majLow.member_id)?.percentile ?? 0, decision.shortlist_size)}
-                      </b>
-                    </>
-                  ) : (
-                    <>
-                      nobody with a clear preference below
-                      <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
-                    </>
-                  )}
-                </p>
-                <p className="mt-1 text-xs text-muted">nobody with a clear preference below {pct(top.r.min_satisfaction)}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       <TasteMap decision={decision} colors={colors} />
 
