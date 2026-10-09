@@ -25,8 +25,11 @@ export async function createHuddle(input: {
   kind: HuddleKind;
   location?: string;
   notes?: string;
+  /** demo/test huddles are kept out of the impact numbers */
+  isDemo?: boolean;
 }): Promise<Huddle> {
-  const h: Huddle = { id: newHuddleId(), created_at: new Date().toISOString(), members: [], result: null, ...input };
+  const { isDemo, ...fields } = input;
+  const h: Huddle = { id: newHuddleId(), created_at: new Date().toISOString(), members: [], result: null, ...fields };
   if (!sb) {
     mem.set(h.id, h);
     return h;
@@ -37,6 +40,8 @@ export async function createHuddle(input: {
     kind: h.kind,
     location: h.location ?? null,
     notes: h.notes ?? null,
+    // anything not created on the production deployment (local dev, smoke tests) counts as test data
+    is_demo: !!isDemo || process.env.VERCEL_ENV !== "production",
   });
   if (error) throw new Error(error.message);
   return h;
@@ -76,9 +81,11 @@ export async function saveDecision(huddleId: string, result: Decision) {
   if (error) throw new Error(error.message);
 }
 
-/** One-tap "did this work for your group?" feedback; no personal data. */
-export async function addFeedback(huddleId: string, vote: "up" | "down") {
-  const entry = { vote, at: new Date().toISOString() };
+export type FeedbackQuestion = "worked" | "clear" | "went";
+
+/** One-tap answers after a decision ("did it work?", "were the % clear?", "did you go?"); no personal data. */
+export async function addFeedback(huddleId: string, q: FeedbackQuestion, a: "yes" | "no") {
+  const entry = { q, a, at: new Date().toISOString() };
   if (!sb) {
     const h = mem.get(huddleId);
     if (!h) throw new Error("not found");

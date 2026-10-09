@@ -62,7 +62,7 @@ export type Huddle = {
   result?: Decision | null;
   /** a decision is being computed right now (another viewer pressed the button) */
   deciding?: boolean;
-  feedback?: { vote: "up" | "down"; at: string }[];
+  feedback?: { q?: "worked" | "clear" | "went"; a?: "yes" | "no"; vote?: "up" | "down"; at: string }[];
 };
 
 export type MemberScore = {

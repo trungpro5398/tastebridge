@@ -38,6 +38,65 @@ function readStorage(key: string) {
   }
 }
 
+type Question = "worked" | "clear" | "went";
+type Answers = Partial<Record<Question, "yes" | "no">>;
+
+function safeParse(v: string): Answers {
+  try {
+    return JSON.parse(v) as Answers;
+  } catch {
+    return {};
+  }
+}
+
+/** Three one-tap questions that tell us whether fair picks work for real groups. */
+function FeedbackCard({
+  answers,
+  onAnswer,
+  pickName,
+  decidedAt,
+}: {
+  answers: Answers;
+  onAnswer: (q: Question, a: "yes" | "no") => void;
+  pickName?: string;
+  decidedAt: string;
+}) {
+  // "Did you go?" only makes sense later; ask once the evening has had time to happen.
+  const [openedAt] = useState(() => Date.now());
+  const later = openedAt - new Date(decidedAt).getTime() > 3 * 3600_000;
+  const q: { id: Question; text: string; yes: string; no: string } | null =
+    later && !answers.went && pickName
+      ? { id: "went", text: `Did your group end up going to ${pickName}?`, yes: "Yes, we went", no: "We went elsewhere" }
+      : !answers.worked
+        ? { id: "worked", text: "Did this work for your group?", yes: "Yes", no: "Not really" }
+        : !answers.clear
+          ? { id: "clear", text: "Were the match percentages easy to understand?", yes: "Yes", no: "Not really" }
+          : null;
+  return (
+    <div className="flex flex-col gap-3 rounded-3xl border border-line bg-card p-5 sm:flex-row sm:items-center sm:px-6">
+      {q ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="mr-1">{q.text}</span>
+          <button onClick={() => onAnswer(q.id, "yes")} className="rounded-lg border border-line px-3 py-1.5 hover:bg-soft">
+            {q.yes}
+          </button>
+          <button onClick={() => onAnswer(q.id, "no")} className="rounded-lg border border-line px-3 py-1.5 hover:bg-soft">
+            {q.no}
+          </button>
+        </div>
+      ) : (
+        <p className="text-sm text-muted">
+          Thanks. Answers are anonymous and feed the live numbers on{" "}
+          <a href="/impact" className="text-brand underline-offset-4 hover:underline">
+            the impact page
+          </a>
+          .
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function HuddleView({ initial }: { initial: Huddle }) {
   const [huddle, setHuddle] = useState(initial);
   const [justJoined, setJustJoined] = useState<string | null>(null);
@@ -46,7 +105,10 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   const [joining, setJoining] = useState(false);
   const [deciding, setDeciding] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
-  const [voted, setVoted] = useState<"up" | "down" | null>(null);
+  const fbKey = `tb:fb:${initial.id}`;
+  const storedFb = useSyncExternalStore(subscribeStorage, () => readStorage(fbKey), () => null);
+  const [localFb, setLocalFb] = useState<Answers>({});
+  const answers: Answers = { ...(storedFb ? safeParse(storedFb) : {}), ...localFb };
   const [showJoin, setShowJoin] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [refineText, setRefineText] = useState("");
@@ -113,7 +175,7 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
 
   async function decide(force = false, refine?: string) {
     setSteps([]);
-    setVoted(null);
+
     setDeciding(true);
     setError("");
     try {
@@ -176,9 +238,16 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     setHuddle((h) => ({ ...h, members: h.members.filter((m) => m.id !== me.id), result: null }));
   }
 
-  async function vote(v: "up" | "down") {
-    setVoted(v);
-    await fetch(`/api/huddles/${huddle.id}/feedback`, { method: "POST", body: JSON.stringify({ vote: v }) }).catch(() => {});
+  async function answer(question: Question, a: "yes" | "no") {
+    const next = { ...answers, [question]: a };
+    setLocalFb(next);
+    try {
+      localStorage.setItem(fbKey, JSON.stringify(next));
+    } catch {}
+    await fetch(`/api/huddles/${huddle.id}/feedback`, {
+      method: "POST",
+      body: JSON.stringify({ question, answer: a }),
+    }).catch(() => {});
   }
 
   async function shareResult() {
@@ -323,23 +392,12 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
               </>
             }
           />
-          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-card p-5 sm:flex-row sm:items-center sm:px-6">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {voted ? (
-                <span className="text-muted">Thanks, noted.</span>
-              ) : (
-                <>
-                  <span className="mr-1">Did this work for your group?</span>
-                  <button onClick={() => vote("up")} className="rounded-lg border border-line px-3 py-1.5 hover:bg-soft">
-                    Yes
-                  </button>
-                  <button onClick={() => vote("down")} className="rounded-lg border border-line px-3 py-1.5 hover:bg-soft">
-                    Not really
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          <FeedbackCard
+            answers={answers}
+            onAnswer={answer}
+            pickName={huddle.result.ranked.find((r) => r.entity.entity_id === huddle.result?.picks[0]?.entity_id)?.entity.name}
+            decidedAt={huddle.result.created_at}
+          />
         </div>
       )}
     </>

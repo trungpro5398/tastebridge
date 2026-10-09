@@ -45,3 +45,6 @@ create table if not exists kv (
   updated_at  timestamptz not null default now()
 );
 alter table kv enable row level security;
+
+-- Separate demo huddles from real ones on the impact page.
+alter table huddles add column if not exists is_demo boolean not null default false;

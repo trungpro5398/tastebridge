@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     kind: "place",
     location: "Melbourne",
     notes: "Keep it under $$$.",
+    isDemo: true,
   });
   for (const f of friends) if (f.picks.length) await addMember(huddle.id, f.name, f.picks);
   return Response.json({ id: huddle.id }, { status: 201 });

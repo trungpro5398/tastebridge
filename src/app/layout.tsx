@@ -30,6 +30,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/#how" className="hover:text-foreground">
               How it works
             </Link>
+            <Link href="/impact" className="hover:text-foreground">
+              Impact
+            </Link>
             <a href="https://github.com/trungpro5398/tastebridge" className="hover:text-foreground">
               GitHub
             </a>

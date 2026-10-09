@@ -73,6 +73,14 @@ function NextStep({ c }: { c: RankedCandidate }) {
   );
 }
 
+/** Words alongside the number, so nobody has to interpret a percentile. */
+export function fitWord(x: number) {
+  if (x >= 0.8) return "great fit";
+  if (x >= 0.6) return "good fit";
+  if (x >= 0.4) return "okay";
+  return "a stretch";
+}
+
 /** One person's row in the fairness meter. */
 function MeterRow({
   s,
@@ -100,7 +108,10 @@ function MeterRow({
                 </span>
               )}
             </span>
-            <span className="font-display text-lg font-semibold tabular-nums">{v}%</span>
+            <span className="shrink-0 text-right">
+              <span className="font-display text-lg font-semibold tabular-nums">{v}%</span>
+              <span className="ml-1.5 text-xs text-muted">{fitWord(s.satisfaction)}</span>
+            </span>
           </div>
           <div className="mt-1.5 h-2 rounded-full bg-soft" aria-hidden>
             <div className="h-full rounded-full" style={{ width: `${Math.max(v, 3)}%`, background: color }} />
