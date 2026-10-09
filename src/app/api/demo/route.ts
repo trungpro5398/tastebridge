@@ -27,12 +27,12 @@ const SCENARIOS: Record<"friends" | "family", Scenario> = {
       { name: "Leo", favourites: [["Parasite", M], ["Severance", TV], ["Radiohead", AR]] },
     ],
   },
-  // a Vietnamese-Australian family: grandmother, parents, teenager
+  // a Vietnamese-Australian family in Melbourne: grandmother, parents, teenager
   family: {
     title: "Sunday lunch, three generations",
-    notes: "Bà likes it calm. Under $$$.",
+    notes: "Grandma likes it calm. Under $$$.",
     friends: [
-      { name: "Bà Lan", favourites: [["Khánh Ly", AR], ["Trịnh Công Sơn", AR], ["The Scent of Green Papaya", M]] },
+      { name: "Grandma Lan", favourites: [["Khánh Ly", AR], ["Trịnh Công Sơn", AR], ["The Scent of Green Papaya", M]] },
       { name: "Minh", favourites: [["Anthony Bourdain: Parts Unknown", TV], ["The Rolling Stones", AR], ["Heat", M]] },
       { name: "Linh", favourites: [["The Great British Baking Show", TV], ["Celine Dion", AR], ["Pride and Prejudice", M]] },
       { name: "Mai", favourites: [["Spider-Man: Into the Spider-Verse", M], ["BTS", AR], ["Stranger Things", TV]] },
@@ -41,7 +41,7 @@ const SCENARIOS: Record<"friends" | "family", Scenario> = {
 };
 
 type Resolved = { name: string; picks: Entity[] }[];
-const demoKey = (scenario: string) => `demo:v5:${scenario}:${qlooMode}`;
+const demoKey = (scenario: string) => `demo:v6:${scenario}:${qlooMode}`;
 
 /** Resolve demo favourites once (sequentially, through the rate limiter) and reuse them for a week. */
 async function demoFriends(scenario: keyof typeof SCENARIOS): Promise<Resolved> {

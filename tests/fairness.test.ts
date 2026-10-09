@@ -136,3 +136,14 @@ test("indifferent people cannot overrule the people who care", () => {
   assert.ok(soup.min_satisfaction >= 0.99);
   assert.ok((soup.min_all ?? 1) < soup.min_satisfaction);
 });
+
+test("a one-point gain for people who care can't push a flexible person far down", async () => {
+  const { fairOrder } = await import("../src/lib/fairness");
+  const opt = (id: string, floor: number, all: number) => ({
+    entity: entity(id), scores: [], min_satisfaction: floor, min_all: all, mean_satisfaction: 0.5, nash: 0,
+  });
+  // ima: carers' floor 58, but a flexible teen at 28; moat: floor 57, everyone at 57 or more
+  assert.equal(fairOrder([opt("ima", 0.58, 0.28), opt("moat", 0.57, 0.57)])[0].entity.entity_id, "moat");
+  // a real gain for someone who cares still wins
+  assert.equal(fairOrder([opt("soup", 0.74, 0.43), opt("santucci", 0.52, 0.49)])[0].entity.entity_id, "soup");
+});

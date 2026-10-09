@@ -37,7 +37,7 @@ const DEFAULT_MAX_KM = 15;
 /** Each person brings their own top matches to the table, so the shortlist is not only compromises. */
 export const CHAMPIONS_EACH = 3;
 
-/** "Bà likes it calm", "somewhere quiet": a vibe requirement enforced in code, not left to the agent. */
+/** "Grandma likes it calm", "somewhere quiet": a vibe requirement enforced in code, not left to the agent. */
 const CALM_ASK = /\b(calm|quiet|quieter|peaceful|relaxed|low[- ]key|not (too )?(loud|noisy))\b/i;
 export const CALM_AVOID = [
   "urn:tag:ambience:qloo:loud",

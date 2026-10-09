@@ -8,6 +8,7 @@
  *
  *   group choice = argmax_c  min_{i cares} s_i(c)  (maximin over people with a preference tonight;
  *                                                   everyone if nobody has one)
+ *   near-ties    = within 3 points on that floor, prefer the higher minimum over everyone
  *   tie-break    = argmax_c  Π_i (ε + s_i(c))      (Nash welfare: balanced, scale-free)
  *   baseline     = argmax_c  mean_i s_i(c)         (what averaging / majority vote would pick)
  */
@@ -103,8 +104,34 @@ export function rankFairly(
   const majority = [...ranked].sort(
     (a, b) => b.mean_satisfaction - a.mean_satisfaction || b.entity.affinity - a.entity.affinity,
   )[0];
-  ranked.sort((a, b) => b.min_satisfaction - a.min_satisfaction || b.nash - a.nash);
-  return { ranked, majority };
+  return { ranked: fairOrder(ranked), majority };
+}
+
+/** Carer floors this close count as equally protective (3 percentile points). */
+export const FLOOR_TIE = 0.03;
+
+/**
+ * Greedy fair order. Each step takes the options whose floor among people who care is within
+ * FLOOR_TIE of the best remaining floor, and among those prefers the one that is kindest to
+ * everyone (highest minimum including flexible people), then Nash welfare. A large gain for someone
+ * who cares always wins; a one-point gain can't be bought by dropping a flexible person far down.
+ */
+export function fairOrder(options: RankedCandidate[]): RankedCandidate[] {
+  const rest = [...options];
+  const out: RankedCandidate[] = [];
+  while (rest.length) {
+    const best = Math.max(...rest.map((r) => r.min_satisfaction));
+    const near = rest.filter((r) => r.min_satisfaction >= best - FLOOR_TIE - 1e-9);
+    near.sort(
+      (a, b) =>
+        (b.min_all ?? b.min_satisfaction) - (a.min_all ?? a.min_satisfaction) ||
+        b.min_satisfaction - a.min_satisfaction ||
+        b.nash - a.nash,
+    );
+    out.push(near[0]);
+    rest.splice(rest.indexOf(near[0]), 1);
+  }
+  return out;
 }
 
 /** Pearson r from which two people's rankings count as clearly alike. */
