@@ -152,6 +152,23 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     }
   }
 
+  /** Take your entry back out so you can change your favourites, keeping what you had. */
+  async function editMine() {
+    const me = huddle.members.find((m) => m.id === joinedAs);
+    if (!me) return;
+    setError("");
+    const res = await fetch(`/api/huddles/${huddle.id}/members/${me.id}`, { method: "DELETE" }).catch(() => null);
+    if (!res || (!res.ok && res.status !== 404)) return setError("Could not edit right now. Try again.");
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+    setJustJoined(null);
+    setName(me.name);
+    setPicks(me.picks);
+    setShowJoin(true);
+    setHuddle((h) => ({ ...h, members: h.members.filter((m) => m.id !== me.id), result: null }));
+  }
+
   async function vote(v: "up" | "down") {
     setVoted(v);
     await fetch(`/api/huddles/${huddle.id}/feedback`, { method: "POST", body: JSON.stringify({ vote: v }) }).catch(() => {});
@@ -281,7 +298,14 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
             <div className="min-w-0">
               <p className="font-medium">
                 {m.name}
-                {m.id === joinedAs && <span className="ml-1.5 text-sm font-normal text-muted">(you)</span>}
+                {m.id === joinedAs && (
+                  <>
+                    <span className="ml-1.5 text-sm font-normal text-muted">(you)</span>
+                    <button onClick={editMine} className="ml-2 text-sm font-normal text-brand underline-offset-4 hover:underline">
+                      Edit
+                    </button>
+                  </>
+                )}
               </p>
               <ul className="mt-1 flex flex-wrap gap-1.5">
                 {m.picks.map((p) => (

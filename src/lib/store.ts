@@ -121,3 +121,21 @@ export async function isDeciding(huddleId: string) {
 export async function setDeciding(huddleId: string, active: boolean) {
   await kvSet(`deciding:${huddleId}`, { active }).catch(() => {});
 }
+
+/** Remove a member (the member id, kept in their browser, acts as the edit token). Clears the result. */
+export async function removeMember(huddleId: string, memberId: string): Promise<boolean> {
+  if (!sb) {
+    const h = mem.get(huddleId);
+    if (!h) return false;
+    const before = h.members.length;
+    h.members = h.members.filter((m: Member) => m.id !== memberId);
+    if (h.members.length === before) return false;
+    h.result = null;
+    return true;
+  }
+  const { data, error } = await sb.from("members").delete().eq("huddle_id", huddleId).eq("id", memberId).select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) return false;
+  await sb.from("huddles").update({ result: null }).eq("id", huddleId);
+  return true;
+}
