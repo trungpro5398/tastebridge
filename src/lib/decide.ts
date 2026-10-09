@@ -406,6 +406,8 @@ export class DecisionSession {
     const allTags = [...expected, ...(this.majority ? [this.majority] : [])].flatMap((c) => (c.entity.tags ?? []).map((t) => t.name));
     const notes = [tradeoffNote, changeNote, groupMessage].join(" ");
     const said = [notes, ...picks.flatMap((p) => [p.headline, p.why_group, ...p.per_member.map((m) => m.reason)])].join(" ");
+    const jargon = said.match(/\b(known_for|taste_match|flexible_tonight|own_top_match|brought_by|protected_person|top_match_for|fair_ranking)\b/);
+    if (jargon) return `error: "${jargon[0]}" is an internal field name; say it in plain words for the group.`;
     const predicts = said.match(/\b(loves?|adores?|hates?|will (love|enjoy|hate))\b/i);
     if (predicts)
       return `error: "${predicts[0]}" predicts how a person will feel. Qloo describes what fans of their favourites tend to like; say that instead.`;
