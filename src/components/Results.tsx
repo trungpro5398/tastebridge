@@ -146,7 +146,7 @@ export default function Results({ decision }: { decision: Decision }) {
         </div>
       )}
 
-      <details className="rounded-2xl border border-line bg-card p-4 text-sm">
+      <details id="how" className="rounded-2xl border border-line bg-card p-4 text-sm">
         <summary className="cursor-pointer font-medium">How the agent decided</summary>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted">
           {decision.trace.map((t, i) => (
@@ -163,7 +163,7 @@ export default function Results({ decision }: { decision: Decision }) {
       </details>
 
       {decision.qloo_calls && decision.qloo_calls.length > 0 && (
-        <details className="rounded-2xl border border-line bg-card p-4 text-sm">
+        <details id="evidence" className="rounded-2xl border border-line bg-card p-4 text-sm">
           <summary className="cursor-pointer font-medium">
             Qloo evidence{" "}
             <span className="font-normal text-muted">

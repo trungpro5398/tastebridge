@@ -52,6 +52,15 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     if (res?.ok) setHuddle(await res.json());
   }, [initial.id]);
 
+  // Deep links (#evidence, #how) open the matching panel, e.g. for judges.
+  useEffect(() => {
+    const el = document.getElementById(window.location.hash.slice(1));
+    if (el instanceof HTMLDetailsElement) {
+      el.open = true;
+      el.scrollIntoView({ block: "start" });
+    }
+  }, []);
+
   // Light-weight live updates: friends joining, results arriving.
   useEffect(() => {
     const t = setInterval(() => document.visibilityState === "visible" && !deciding && refresh(), 4000);
