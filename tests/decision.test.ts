@@ -209,3 +209,10 @@ test("explanations can't predict how a person will feel", async () => {
   const picks = session.toDecision("rules").picks.map((p, i) => (i === 0 ? { ...p, why_group: "Friend 0 loves it." } : p));
   assert.match(session.finalize(picks, "t"), /predicts how a person will feel/);
 });
+
+test("rules refinements never map a word to an unrelated tag", async () => {
+  const session = new DecisionSession(huddle(""));
+  const opts = await refinementsByRules(session, ["somewhere quieter", "no zzqx"]);
+  assert.deepEqual(opts.preferTags, []);
+  assert.deepEqual(opts.avoidTags, []);
+});

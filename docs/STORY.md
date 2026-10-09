@@ -29,14 +29,14 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 3. Four calls of `GET /v2/insights?...&signal.interests.entities=<one member's 3 favourites>&filter.results.entities=<shortlist ids>` score the same shortlist once per member. `query.affinity` is converted to a within-member percentile, and `query.explainability` names which favourite drove each match.
 4. Maximin and Nash pick the winner. The UI shows each member's match, the favourite behind it, and the simple-average alternative.
 
-**Real run (production, 10 Oct 2026): Sunday lunch, three generations**
+**Real run (production, 10 Oct 2026): Sunday lunch, three generations** ([live result](https://tastebridge-brown.vercel.app/h/i8iiiqdb))
 - A Vietnamese-Australian family in Melbourne. Grandma Lan (Khánh Ly, Trịnh Công Sơn, *The Scent of Green Papaya*), Minh (*Anthony Bourdain: Parts Unknown*, The Rolling Stones, *Heat*), Linh (*The Great British Baking Show*, Céline Dion, *Pride and Prejudice*) and their teenager Mai (*Spider-Man: Into the Spider-Verse*, BTS, *Stranger Things*).
 - Must-have: "Grandma likes it calm. Under $$$." The code turns that into hard rules: up to $$, and no venue Qloo tags loud, noisy, bustling or lively.
 - 21 Melbourne restaurants went on the table; 9 were brought by one person's own taste.
 - Qloo sees Mai as flexible tonight: her scores barely differ between these options.
 - A simple average picks Kawa Sake Sushi Boat, where **Grandma Lan's match is 37%** (her 15th of 21 options).
 - TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
-- Claude compared the two people who disagree most: "Grandma Lan and Minh split sharply on several places, but both rate Roule Galette." It described The Moat only with its Qloo tags ("tagged Intimate").
+- Claude compared the two people who disagree most: "Grandma Lan and Minh split most: Ichigo suits Grandma Lan (83%) but not Minh (24%)." It described The Moat only with its Qloo tags ("tagged Intimate").
 - 10 Qloo calls; Claude cost $0.08.
 - **Talking back** ([live result](https://tastebridge-brown.vercel.app/h/8nwixyna)): the group asked "No Italian please, and somewhere quieter". Claude looked up Qloo's *Italian* and *Quiet* tags, excluded Italian, leaned quiet, rebuilt the shortlist (18 restaurants) and rescored everyone. The Moat was replaced by **Roule Galette**, with nobody with a clear preference below 59%. Its change note stays honest: "No option on this list is tagged quiet or calm." 12 Qloo calls, $0.06.
 

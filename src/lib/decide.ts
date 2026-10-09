@@ -532,7 +532,14 @@ export async function refinementsByRules(s: DecisionSession, refinements: string
     if (near || /\b(closer|nearby|cheaper|cheap|budget|surprise|adventurous|hidden gem|different|unusual|newer|recent)\b/.test(lower)) continue;
     const term = (neg ? neg[1] : lower).replace(/\b(somewhere|something|place|food|please|more|a bit|bit)\b/g, "").trim();
     if (!term) continue;
-    const [tag] = await s.findTags(term);
+    // calm/quiet is enforced in code already; anything else must closely match a tag name ("quieter" is not "Queer")
+    if (!neg && CALM_ASK.test(term)) continue;
+    const tags = await s.findTags(term);
+    const close = (name: string) => {
+      const a = name.toLowerCase();
+      return a === term || (Math.min(a.length, term.length) >= 4 && (a.startsWith(term) || term.startsWith(a)));
+    };
+    const tag = tags.find((t) => close(t.name));
     if (tag) (neg ? opts.avoidTags! : opts.preferTags!).push(tag.id);
   }
   return opts;
