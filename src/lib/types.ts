@@ -51,6 +51,8 @@ export type Member = {
   name: string;
   picks: Entity[];
   joined_at: string;
+  /** private "not tonight"; server-side only, never in public reads */
+  avoid?: string;
 };
 
 export type Huddle = {
@@ -141,6 +143,8 @@ export type Decision = {
   personal_top?: Record<string, string>;
   /** calm was requested and the pick has no calm-type tag: the best calm-tagged option within 10 points */
   calm_alternative?: { name: string; tags: string[]; lowest_match: number };
+  /** what the group's private "not tonight" requests excluded (never who asked) */
+  private_exclusions?: string[];
   /** Claude tokens spent on this decision */
   agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };

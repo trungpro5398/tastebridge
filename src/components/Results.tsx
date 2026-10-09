@@ -320,6 +320,12 @@ export default function Results({
             )}
           </div>
           <p className="max-w-prose">{top.p.why_group}</p>
+          {decision.private_exclusions && (
+            <p className="text-sm text-muted">
+              Private &ldquo;not tonight&rdquo; requests honoured: no {decision.private_exclusions.join(", no ")}. Who asked
+              stays private.
+            </p>
+          )}
           {decision.calm_alternative && (
             <p className="max-w-prose rounded-xl bg-soft px-3 py-2 text-sm">
               You asked for calm. Qloo doesn&apos;t tag this place as calm or quiet; the calmest close option is{" "}

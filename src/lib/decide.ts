@@ -58,6 +58,13 @@ const AMBIENCE_WORDS: Record<string, string> = {
   romantic: "romantic", lively: "lively", bustling: "bustl", loud: "loud", noisy: "nois",
 };
 
+/** A Qloo tag name that really is the word asked for ("quieter" is not "Queer"). */
+export function closeTagName(name: string, term: string) {
+  const a = name.toLowerCase();
+  const t = term.toLowerCase();
+  return a === t || (Math.min(a.length, t.length) >= 4 && (a.startsWith(t) || t.startsWith(a)));
+}
+
 /** Qloo tag names on an option that support a calm/quiet request. */
 function calmTags(e: InsightEntity) {
   return (e.tags ?? []).map((t) => t.name).filter((n) => /calm|quiet|peace|relax|intimate|coz|tranquil|seren/i.test(n));
@@ -82,6 +89,9 @@ export class DecisionSession {
   picks: Pick[] | null = null;
   tradeoffNote = "";
   requiredTags: string[] | null = null;
+  /** tag ids from members' private "not tonight" requests (resolved once, never attributed) */
+  privateTags: string[] | null = null;
+  privateExclusions: string[] = [];
   location?: string;
   changeNote = "";
   /** Claude token usage for this decision (set by the agent) */
@@ -139,7 +149,8 @@ export class DecisionSession {
 
   /** The must-haves or follow-ups ask for a calm or quiet place. */
   wantsCalm() {
-    return CALM_ASK.test([this.huddle.notes ?? "", ...this.refinements].join(" "));
+    const quietWish = this.huddle.members.some((m) => /\b(loud|noisy|busy|crowded|lively)\b/i.test(m.avoid ?? ""));
+    return quietWish || CALM_ASK.test([this.huddle.notes ?? "", ...this.refinements].join(" "));
   }
 
   private lastTop: { id: string; name: string } | undefined;
@@ -179,11 +190,26 @@ export class DecisionSession {
       }
       this.requiredTags = tags;
     }
+    if (this.privateTags === null) {
+      const tags: string[] = [];
+      const names: string[] = [];
+      const terms = [...new Set(this.huddle.members.map((m) => m.avoid?.trim().toLowerCase().replace(/^(no|not|avoid)\s+/, "")).filter(Boolean))] as string[];
+      for (const term of terms) {
+        if (/\b(loud|noisy|busy|crowded|lively)\b/.test(term)) continue; // handled as a calm request
+        const tag = (await this.findTags(term)).find((t) => closeTagName(t.name, term));
+        if (tag) {
+          tags.push(tag.id);
+          names.push(tag.name);
+        }
+      }
+      this.privateTags = tags;
+      this.privateExclusions = names;
+    }
     const isPlace = this.huddle.kind === "place";
     const calm = isPlace && this.wantsCalm();
     const tags = [...new Set([...this.requiredTags, ...(opts.tags ?? [])])];
     const avoid = [
-      ...new Set([...(isPlace ? DINNER_EXCLUDE : []), ...(calm ? CALM_AVOID : []), ...(opts.avoidTags ?? [])]),
+      ...new Set([...(isPlace ? DINNER_EXCLUDE : []), ...(calm ? CALM_AVOID : []), ...this.privateTags, ...(opts.avoidTags ?? [])]),
     ].filter((t) => !tags.includes(t));
     const prefer = [...new Set([...(calm ? CALM_PREFER : []), ...(opts.preferTags ?? [])])];
     const budget = isPlace ? parsePrice(this.huddle.notes) : undefined;
@@ -278,6 +304,7 @@ export class DecisionSession {
       musts.length ? `Must be ${label(musts)}.` : "",
       priceMax ? `Up to ${"$".repeat(priceMax)}.` : "",
       calm ? "Loud, bustling and lively places ruled out." : "",
+      this.privateExclusions.length ? `Private "not tonight" requests applied: no ${this.privateExclusions.join(", no ")}.` : "",
       opts.avoidTags?.length ? `Avoiding ${label(opts.avoidTags)}.` : "",
       leaning.length ? `Leaning towards ${label(leaning)}.` : "",
       opts.popularityMax ? "Less mainstream picks." : "",
@@ -464,6 +491,7 @@ export class DecisionSession {
       compatibility: groupCompatibility(this.ranked),
       shortlist_size: this.ranked.length,
       calm_alternative: this.calmAlternative(),
+      private_exclusions: this.privateExclusions.length ? this.privateExclusions : undefined,
       personal_top: Object.fromEntries(
         this.huddle.members.map((m) => {
           const best = [...this.ranked].sort(
@@ -548,11 +576,7 @@ export async function refinementsByRules(s: DecisionSession, refinements: string
     // calm/quiet is enforced in code already; anything else must closely match a tag name ("quieter" is not "Queer")
     if (!neg && CALM_ASK.test(term)) continue;
     const tags = await s.findTags(term);
-    const close = (name: string) => {
-      const a = name.toLowerCase();
-      return a === term || (Math.min(a.length, term.length) >= 4 && (a.startsWith(term) || term.startsWith(a)));
-    };
-    const tag = tags.find((t) => close(t.name));
+    const tag = tags.find((t) => closeTagName(t.name, term));
     if (tag) (neg ? opts.avoidTags! : opts.preferTags!).push(tag.id);
   }
   return opts;

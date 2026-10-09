@@ -22,4 +22,6 @@ export const JoinHuddle = z.object({
     (picks) => new Set(picks.map((p) => p.entity_id)).size === picks.length,
     "Choose different favourites",
   ),
+  /** private "not tonight" (e.g. "sushi", "horror"): applied as an exclusion, never shown with a name */
+  avoid: z.string().trim().max(40).optional(),
 });

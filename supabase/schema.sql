@@ -65,3 +65,6 @@ alter table members add column if not exists edit_token text;
 -- One answer per question per browser network per huddle (keeps /impact honest).
 alter table feedback add column if not exists ip_hash text;
 create unique index if not exists feedback_once on feedback(huddle_id, q, ip_hash);
+
+-- Private "not tonight" per member (server-only; never selected in public reads).
+alter table members add column if not exists avoid text;

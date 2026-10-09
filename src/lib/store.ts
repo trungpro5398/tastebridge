@@ -61,6 +61,20 @@ export async function getHuddle(id: string): Promise<Huddle | null> {
   return { ...data, location: data.location ?? undefined, notes: data.notes ?? undefined, members } as Huddle;
 }
 
+const memAvoids = ((globalThis as unknown as { __avoids?: Map<string, string> }).__avoids ??= new Map());
+
+/** Private "not tonight" requests by member id. Server-only: used by the decision, never returned to clients. */
+export async function getPrivateAvoids(huddleId: string): Promise<Record<string, string>> {
+  if (!sb) {
+    const h = mem.get(huddleId);
+    const members: Member[] = h?.members ?? [];
+    return Object.fromEntries(members.flatMap((m) => (memAvoids.get(m.id) ? [[m.id, memAvoids.get(m.id)!]] : [])));
+  }
+  const { data, error } = await sb.from("members").select("id, avoid").eq("huddle_id", huddleId).not("avoid", "is", null);
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data ?? []).map((r) => [r.id as string, r.avoid as string]));
+}
+
 const memTokens = ((globalThis as unknown as { __tokens?: Map<string, string> }).__tokens ??= new Map());
 
 /** Adds a member and returns a secret edit token that only this member's browser ever sees. */
@@ -68,6 +82,7 @@ export async function addMember(
   huddleId: string,
   name: string,
   picks: Entity[],
+  avoid?: string,
 ): Promise<Member & { editToken: string }> {
   const m: Member = { id: crypto.randomUUID(), name, picks, joined_at: new Date().toISOString() };
   const editToken = crypto.randomUUID();
@@ -77,9 +92,10 @@ export async function addMember(
     h.members.push(m);
     h.result = null;
     memTokens.set(m.id, editToken);
+    if (avoid) memAvoids.set(m.id, avoid);
     return { ...m, editToken };
   }
-  const { error } = await sb.from("members").insert({ ...m, huddle_id: huddleId, edit_token: editToken });
+  const { error } = await sb.from("members").insert({ ...m, huddle_id: huddleId, edit_token: editToken, avoid: avoid || null });
   if (error) throw new Error(error.message);
   await sb.from("huddles").update({ result: null }).eq("id", huddleId);
   return { ...m, editToken };

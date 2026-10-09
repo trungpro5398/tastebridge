@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { agentEnabled, decide } from "@/lib/agent";
 import { ConstraintError, type RefineContext, type Step } from "@/lib/decide";
 import { QlooError, withQlooLog } from "@/lib/qloo";
-import { getHuddle, isDeciding, saveDecision, setDeciding } from "@/lib/store";
+import { getHuddle, getPrivateAvoids, isDeciding, saveDecision, setDeciding } from "@/lib/store";
 import type { Decision, Huddle } from "@/lib/types";
 import { ipHash, reserveAgentRun } from "@/lib/usage";
 
@@ -52,6 +52,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/huddles/[id
   if (!huddle) return Response.json({ error: "Huddle not found" }, { status: 404 });
   if (huddle.members.length < 2)
     return Response.json({ error: "Need at least 2 people to make a group decision" }, { status: 400 });
+  // private "not tonight" requests are attached server-side only; the result never says who asked
+  const avoids = await getPrivateAvoids(id);
+  huddle.members = huddle.members.map((m) => (avoids[m.id] ? { ...m, avoid: avoids[m.id] } : m));
 
   const body = (await request.json().catch(() => ({}))) as { force?: unknown; refine?: unknown };
   const refine = typeof body.refine === "string" ? body.refine.trim().slice(0, 160) : "";

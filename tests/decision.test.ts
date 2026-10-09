@@ -231,3 +231,18 @@ test("an explanation can't call an option someone's best unless it is their #1",
   if (isTop) assert.equal(out, "saved");
   else assert.match(out, /not their #1/);
 });
+
+test("a private 'not tonight' is excluded without saying who asked", async () => {
+  const h = huddle("");
+  h.members[1] = { ...h.members[1], avoid: "no chinese" };
+  const session = new DecisionSession(h);
+  await session.generateCandidates({ priceMax: 4 });
+  for (const e of session.shortlist) assert.ok(!e.tags?.some((t) => t.name === "chinese"), e.name);
+  await session.scoreMembers();
+  const d = session.toDecision("rules");
+  assert.deepEqual(d.private_exclusions, ["chinese"]);
+  // the steps say what was excluded, never who asked
+  const steps = JSON.stringify(d.trace);
+  assert.match(steps, /no chinese/);
+  assert.ok(!steps.includes("Friend 1"));
+});

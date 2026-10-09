@@ -103,6 +103,7 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   const [huddle, setHuddle] = useState(initial);
   const [justJoined, setJustJoined] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [avoid, setAvoid] = useState("");
   const [picks, setPicks] = useState<Entity[]>([]);
   const [joining, setJoining] = useState(false);
   const [deciding, setDeciding] = useState(false);
@@ -154,6 +155,7 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
       // Send only what the decision needs (the search result carries more).
       body: JSON.stringify({
         name: name.trim(),
+        ...(avoid.trim() ? { avoid: avoid.trim() } : {}),
         picks: picks.map(({ entity_id, name, type, image, meta, tags }) => ({
           entity_id,
           name,
@@ -476,6 +478,20 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
           <div className="mt-1">
             <FavouritePicker value={picks} onChange={setPicks} />
           </div>
+          <label className="mt-3 block text-sm font-medium" htmlFor="member-avoid">
+            Not tonight <span className="font-normal text-muted">(optional, private)</span>
+          </label>
+          <input
+            id="member-avoid"
+            value={avoid}
+            onChange={(e) => setAvoid(e.target.value)}
+            placeholder={huddle.kind === "place" ? "e.g. sushi, spicy, somewhere loud" : "e.g. horror, musicals"}
+            maxLength={40}
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
+          />
+          <p className="mt-1 text-xs text-muted">
+            One thing you&apos;d rather skip. It&apos;s ruled out quietly; nobody sees that it came from you.
+          </p>
           <button
             onClick={join}
             disabled={joining || !name.trim() || picks.length === 0}
