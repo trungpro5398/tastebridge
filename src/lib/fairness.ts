@@ -103,6 +103,9 @@ export function rankFairly(
   return { ranked, majority };
 }
 
+/** Pearson r from which two people's rankings count as clearly alike. */
+export const TWINS_FROM = 0.3;
+
 export type Compatibility = {
   /** 0..1: mean pairwise rank agreement over tonight's shortlist (0.5 = unrelated tastes) */
   score: number;
@@ -153,10 +156,9 @@ export function groupCompatibility(ranked: RankedCandidate[]): Compatibility | u
     }
   const mean = sum / weight;
   const sorted = [...named].sort((p, q) => q.r - p.r);
-  return {
-    score: +((mean + 1) / 2).toFixed(2),
-    pairs,
-    closest: sorted[0],
-    furthest: sorted.length > 1 ? sorted.at(-1) : undefined,
-  };
+  // Only call people "twins" when their rankings really move together, and "far apart" when they don't.
+  const closest = sorted[0] && sorted[0].r >= TWINS_FROM ? sorted[0] : undefined;
+  const last = sorted.at(-1);
+  const furthest = last && last !== closest && last.r < TWINS_FROM ? last : undefined;
+  return { score: +((mean + 1) / 2).toFixed(2), pairs, closest, furthest };
 }

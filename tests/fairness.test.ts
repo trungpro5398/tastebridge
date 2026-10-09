@@ -110,8 +110,9 @@ test("compatibility never names flexible people as taste twins", async () => {
     [0.5, 1, 0, 0.5], [0.52, 0.75, 0.25, 0.52], [0.49, 0.5, 0.5, 0.49], [0.51, 0.25, 0.75, 0.51], [0.48, 0, 1, 0.48],
   ].map((sats, i) => ({ entity: { entity_id: `e${i}`, name: `E${i}`, type: "x", affinity: 0, explain: {} }, scores: mk(sats), min_satisfaction: 0, mean_satisfaction: 0, nash: 0 }));
   const c = groupCompatibility(ranked)!;
-  assert.deepEqual([c.closest?.a, c.closest?.b], ["B", "C"]);
-  assert.equal(c.furthest, undefined);
+  // the only pair who care disagree completely: "furthest apart", never "taste twins"
+  assert.equal(c.closest, undefined);
+  assert.deepEqual([c.furthest?.a, c.furthest?.b], ["B", "C"]);
   // A and D move in lockstep (r = 1) but barely care; the score follows B vs C (r = -1)
   assert.ok(c.score < 0.3);
 });
