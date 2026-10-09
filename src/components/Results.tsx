@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import FairnessChart from "@/components/FairnessChart";
 import TasteMap from "@/components/TasteMap";
@@ -34,6 +35,29 @@ function broughtBy(names?: string[]) {
   if (!names?.length) return "";
   if (names.length === 1) return `${names[0]}'s top match`;
   return `Top match for ${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+/** "12th of 24 options": the honest reading of a within-shortlist percentile. */
+function rankText(percentile: number, n: number) {
+  const r = Math.round((1 - percentile) * (n - 1)) + 1;
+  const suffix = r % 10 === 1 && r % 100 !== 11 ? "st" : r % 10 === 2 && r % 100 !== 12 ? "nd" : r % 10 === 3 && r % 100 !== 13 ? "rd" : "th";
+  return `${r}${suffix} of ${n} options`;
+}
+
+/** Secondary views, rendered only when opened (the map needs a visible container). */
+function MoreDetail({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      className="rounded-3xl border border-line bg-card"
+      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
+    >
+      <summary className="cursor-pointer px-5 py-4 font-display text-lg font-semibold sm:px-6">
+        See the maths: every option, the map and how alike your tastes are
+      </summary>
+      {open && <div className="space-y-4 px-3 pb-3 sm:px-4 sm:pb-4">{children}</div>}
+    </details>
+  );
 }
 
 function KnownFor({ c, n = 4 }: { c: RankedCandidate; n?: number }) {
@@ -329,12 +353,6 @@ export default function Results({
 
       {afterPick}
 
-      <TasteMap decision={decision} colors={colors} />
-
-      {decision.compatibility && (
-        <Compatibility c={decision.compatibility} colorOfName={(n) => color(top.r.scores.find((s) => s.member_name === n)?.member_id ?? "")} />
-      )}
-
       {maj && (
         <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
           <h3 className="font-display text-lg font-semibold">
@@ -351,23 +369,41 @@ export default function Results({
                   {majLow.member_name} drops to
                   <b className="font-display text-xl tabular-nums">{pct(majLow.satisfaction)}</b>
                 </p>
+                {decision.shortlist_size && majLow.percentile !== undefined && (
+                  <p className="mt-1 text-xs text-muted">
+                    {rankText(majLow.percentile, decision.shortlist_size)} for {majLow.member_name}&apos;s taste
+                  </p>
+                )}
               </div>
               <div className="rounded-2xl bg-accent/15 p-4">
                 <p className="text-sm text-muted">TasteBridge picks</p>
                 <p className="mt-0.5 truncate font-semibold">{top.r.entity.name}</p>
                 <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                   {low && <Avatar name={low.member_name} color={color(low.member_id)} size="sm" />}
-                  nobody below
+                  nobody who cares below
                   <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
                 </p>
+                {decision.shortlist_size && low?.percentile !== undefined && majLow && (
+                  <p className="mt-1 text-xs text-muted">
+                    and {rankText(top.r.scores.find((x) => x.member_id === majLow.member_id)?.percentile ?? 0, decision.shortlist_size)} for{" "}
+                    {majLow.member_name}
+                  </p>
+                )}
               </div>
             </div>
           )}
         </div>
       )}
 
-      <FairnessChart decision={decision} />
-      {top.r.entity.type === "urn:entity:place" && <ShortlistMap decision={decision} />}
+      <TasteMap decision={decision} colors={colors} />
+
+      <MoreDetail>
+        {decision.compatibility && (
+          <Compatibility c={decision.compatibility} colorOfName={(n) => color(top.r.scores.find((s) => s.member_name === n)?.member_id ?? "")} />
+        )}
+        <FairnessChart decision={decision} />
+        {top.r.entity.type === "urn:entity:place" && <ShortlistMap decision={decision} />}
+      </MoreDetail>
 
       {rest.length > 0 && (
         <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">

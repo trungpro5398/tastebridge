@@ -37,6 +37,33 @@ const DEFAULT_MAX_KM = 15;
 /** Each person brings their own top matches to the table, so the shortlist is not only compromises. */
 export const CHAMPIONS_EACH = 3;
 
+/** "Bà likes it calm", "somewhere quiet": a vibe requirement enforced in code, not left to the agent. */
+const CALM_ASK = /\b(calm|quiet|quieter|peaceful|relaxed|low[- ]key|not (too )?(loud|noisy))\b/i;
+export const CALM_AVOID = [
+  "urn:tag:ambience:qloo:loud",
+  "urn:tag:ambience:qloo:noisy",
+  "urn:tag:ambience:qloo:bustling",
+  "urn:tag:ambience:qloo:lively",
+  "urn:tag:ambience:place:lively",
+];
+const CALM_PREFER = ["urn:tag:ambience:qloo:calm", "urn:tag:ambience:qloo:quiet", "urn:tag:ambience:qloo:peaceful"];
+
+/**
+ * Ambience words an explanation may only use when the option's Qloo tags support them, so the
+ * model cannot call a bustling venue "calm". Maps a word to the tag stem that must be present.
+ */
+const AMBIENCE_WORDS: Record<string, string> = {
+  calm: "calm", calmer: "calm", quiet: "quiet", quieter: "quiet", peaceful: "peace", tranquil: "tranquil",
+  serene: "seren", relaxed: "relax", relaxing: "relax", cozy: "coz", cosy: "coz", intimate: "intimate",
+  romantic: "romantic", lively: "lively", bustling: "bustl", loud: "loud", noisy: "nois",
+};
+
+export function ungroundedAmbience(text: string, tagNames: string[]) {
+  const tags = tagNames.map((t) => t.toLowerCase());
+  const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
+  return [...new Set(words.filter((w) => AMBIENCE_WORDS[w] && !tags.some((t) => t.includes(AMBIENCE_WORDS[w]))))];
+}
+
 export type Step = { tool: string; summary: string };
 export type OnStep = (step: Step) => void;
 
@@ -97,6 +124,12 @@ export class DecisionSession {
     return tags;
   }
 
+  /** The must-haves or follow-ups ask for a calm or quiet place. */
+  wantsCalm() {
+    return CALM_ASK.test([this.huddle.notes ?? "", ...this.refinements].join(" "));
+  }
+
+  private lastTop: { id: string; name: string } | undefined;
   private lastRequest = "";
   /** True when the last group_candidates call repeated the previous request exactly. */
   repeated = false;
@@ -128,9 +161,12 @@ export class DecisionSession {
       this.requiredTags = tags;
     }
     const isPlace = this.huddle.kind === "place";
+    const calm = isPlace && this.wantsCalm();
     const tags = [...new Set([...this.requiredTags, ...(opts.tags ?? [])])];
-    const avoid = [...new Set([...(isPlace ? DINNER_EXCLUDE : []), ...(opts.avoidTags ?? [])])].filter((t) => !tags.includes(t));
-    const prefer = [...new Set(opts.preferTags ?? [])];
+    const avoid = [
+      ...new Set([...(isPlace ? DINNER_EXCLUDE : []), ...(calm ? CALM_AVOID : []), ...(opts.avoidTags ?? [])]),
+    ].filter((t) => !tags.includes(t));
+    const prefer = [...new Set([...(calm ? CALM_PREFER : []), ...(opts.preferTags ?? [])])];
     const budget = isPlace ? parsePrice(this.huddle.notes) : undefined;
     const priceMax = budget === undefined ? opts.priceMax : Math.min(budget, opts.priceMax ?? budget);
     // 30 options gives each person's percentile a finer, more stable scale
@@ -157,7 +193,11 @@ export class DecisionSession {
       query(this.groupSignal(), take),
       ...(members.length > 1 ? members.map((m) => query(m.picks.map((p) => p.entity_id), CHAMPIONS_EACH * 2)) : []),
     ]);
-    const usable = (list: InsightEntity[]) => (isPlace ? list.filter(isDiningVenue) : list);
+    const avoidSet = new Set(avoid);
+    const usable = (list: InsightEntity[]) =>
+      (isPlace ? list.filter(isDiningVenue) : list).filter(
+        (e) => !e.tags?.some((t) => avoidSet.has(t.id) || (calm && /^(loud|noisy|bustling|lively)$/i.test(t.name))),
+      );
     const dining = usable(raw);
     const droppedNonDining = raw.length - dining.length;
     // everyone's own top matches go on the table first, then the group's shared-taste options
@@ -212,6 +252,7 @@ export class DecisionSession {
         (opts.area ? ` around ${opts.area}` : "") +
         (tags.length ? `, must be: ${label(tags)}` : "") +
         (opts.avoidTags?.length ? `, avoiding: ${label(opts.avoidTags)}` : "") +
+        (calm ? ", calm required: no venues Qloo tags loud, noisy, bustling or lively" : "") +
         (prefer.length ? `, leaning towards: ${label(prefer)}` : "") +
         (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : "") +
         (opts.popularityMax ? ", off the beaten track" : "") +
@@ -239,12 +280,18 @@ export class DecisionSession {
     );
     this.perMember = Object.fromEntries(results);
     const { ranked, majority } = rankFairly(this.shortlist, this.huddle.members, this.perMember);
+    const before = this.lastTop;
     this.ranked = ranked;
     this.majority = majority;
     const top = ranked[0];
+    this.lastTop = top && { id: top.entity.entity_id, name: top.entity.name };
+    const sameTop = before && top && before.id === top.entity.entity_id;
+    const moved = before && !sameTop ? ranked.find((r) => r.entity.entity_id === before.id) : undefined;
     this.log(
       "score_for_members",
-      `scored ${ids.length} candidates × ${this.huddle.members.length} members; fairest: ${top?.entity.name} (lowest match ${pct(top?.min_satisfaction ?? 0)}), simple average: ${majority?.entity.name} (lowest match ${pct(majority?.min_satisfaction ?? 0)})`,
+      `scored ${ids.length} candidates × ${this.huddle.members.length} members; fairest: ${top?.entity.name} (lowest match ${pct(top?.min_satisfaction ?? 0)}), simple average: ${majority?.entity.name} (lowest match ${pct(majority?.min_satisfaction ?? 0)})` +
+        (sameTop ? `; the fairest option did not change (percentages are relative to this longer list)` : "") +
+        (before && !sameTop ? `; previous fairest ${before.name} ${moved ? `now has lowest match ${pct(moved.min_satisfaction)}` : "is not on this list"}` : ""),
     );
     return { ranked, majority };
   }
@@ -293,7 +340,7 @@ export class DecisionSession {
         meta: r.entity.meta,
         known_for: highlights(r.entity, 5),
         ...(r.entity.champion_of ? { top_match_for: r.entity.champion_of } : {}),
-        lowest_taste_match: pct(r.min_satisfaction),
+        lowest_taste_match_among_those_who_care: pct(r.min_satisfaction),
         ...cared(r),
         average: pct(r.mean_satisfaction),
         per_member: r.scores.map((s) => ({
@@ -305,7 +352,7 @@ export class DecisionSession {
       })),
       average_vote_would_pick: this.majority && {
         name: this.majority.entity.name,
-        lowest_taste_match: pct(this.majority.min_satisfaction),
+        lowest_taste_match_among_those_who_care: pct(this.majority.min_satisfaction),
         lowest_match_member: [...this.majority.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0]?.member_name,
       },
     };
@@ -317,6 +364,13 @@ export class DecisionSession {
     const expected = this.ranked.slice(0, 3);
     if (!expected.length || picks.length !== expected.length || picks.some((p, i) => p.entity_id !== expected[i].entity.entity_id))
       return "error: use exactly the top 3 (or all available) entity_ids in fair ranking order";
+    for (const [i, p] of picks.entries()) {
+      const tags = (expected[i].entity.tags ?? []).map((t) => t.name);
+      const text = [p.headline, p.why_group, ...p.per_member.map((m) => m.reason)].join(" ");
+      const bad = ungroundedAmbience(text, tags);
+      if (bad.length)
+        return `error: ${expected[i].entity.name} is described as "${bad.join('", "')}", but its Qloo tags do not say so (it is known for: ${highlights(expected[i].entity, 6).join(", ") || "nothing specific"}). Rewrite without that claim.`;
+    }
     this.picks = picks;
     this.tradeoffNote = tradeoffNote;
     this.changeNote = changeNote;
@@ -342,6 +396,7 @@ export class DecisionSession {
       agent_usage: this.usage,
       group_message: this.groupMessage || ruleMessage(this.huddle, this.ranked[0]),
       compatibility: groupCompatibility(this.ranked),
+      shortlist_size: this.ranked.length,
     };
   }
 }
@@ -357,7 +412,7 @@ function rulePicks(ranked: RankedCandidate[]): Pick[] {
   return ranked.slice(0, 3).map((r) => ({
     entity_id: r.entity.entity_id,
     headline: r.entity.name,
-    why_group: `Every member's taste match is ${pct(r.min_satisfaction)} or higher; group average ${pct(r.mean_satisfaction)}.`,
+    why_group: `Nobody with a preference tonight is below ${pct(r.min_satisfaction)}; group average ${pct(r.mean_satisfaction)}.`,
     per_member: r.scores.map((s) => ({
       member_name: s.member_name,
       reason: s.flexible
@@ -374,7 +429,7 @@ function ruleTradeoff(fair?: RankedCandidate, majority?: RankedCandidate | null)
   if (fair.entity.entity_id === majority.entity.entity_id)
     return `${fair.entity.name} is both the fairest option and the one a simple average would pick.`;
   const loser = [...majority.scores].filter((s) => !s.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0] ?? majority.scores[0];
-  return `A simple average would pick ${majority.entity.name}, but ${loser.member_name}'s taste match there is only ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone at ${pct(fair.min_satisfaction)} or higher.`;
+  return `A simple average would pick ${majority.entity.name}, but ${loser.member_name}'s taste match there is only ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone with a preference at ${pct(fair.min_satisfaction)} or higher.`;
 }
 
 export type RefineContext = { refinements?: string[]; previous?: { entity_id: string; name: string } };
@@ -412,14 +467,14 @@ export async function refinementsByRules(s: DecisionSession, refinements: string
 function ruleMessage(huddle: Huddle, top?: RankedCandidate) {
   if (!top) return "";
   const where = top.entity.meta ? ` (${top.entity.meta.split(" · ").join(", ")})` : "";
-  return `${huddle.title}: let's do ${top.entity.name}${where}. It's the fairest fit for all of us; nobody is below ${pct(top.min_satisfaction)}.`;
+  return `${huddle.title}: let's do ${top.entity.name}${where}. It's the fairest fit for all of us.`;
 }
 
 function ruleChange(prev: { entity_id: string; name: string } | undefined, now?: RankedCandidate) {
   if (!prev || !now) return "";
   return prev.entity_id === now.entity.entity_id
     ? `${now.entity.name} still fits best after your change.`
-    : `Changed from ${prev.name} to ${now.entity.name}; everyone is at ${pct(now.min_satisfaction)} or higher.`;
+    : `Changed from ${prev.name} to ${now.entity.name}; everyone with a preference is at ${pct(now.min_satisfaction)} or higher.`;
 }
 
 /** Drop venues far from where the shortlist clusters (Qloo's city queries can reach 50 km out). */

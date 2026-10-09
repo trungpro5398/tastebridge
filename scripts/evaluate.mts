@@ -60,6 +60,10 @@ type Row = {
   avgMean: number;
   differs: boolean;
   plainDiffers: boolean;
+  /** protected person's raw Qloo affinity at the fair pick minus at the average pick */
+  rawGain: number;
+  /** that gain as a share of the person's own affinity spread over the shortlist */
+  rawGainShare: number;
   flexible: number;
   people: number;
 };
@@ -90,8 +94,15 @@ for (let g = 0; g < GROUPS; g++) {
         Math.min(...b.scores.map((x) => x.percentile ?? x.satisfaction)) -
         Math.min(...a.scores.map((x) => x.percentile ?? x.satisfaction)),
     )[0];
+    const cares = avg.scores.filter((x) => !x.flexible);
+    const who = [...(cares.length ? cares : avg.scores)].sort((a, b) => a.satisfaction - b.satisfaction)[0];
+    const affOf = (c: typeof fair) => c.scores.find((x) => x.member_id === who.member_id)!.affinity;
+    const all = s.ranked.map(affOf);
+    const rawGain = affOf(fair) - affOf(avg);
     rows.push({
       kind,
+      rawGain,
+      rawGainShare: rawGain / Math.max(1e-6, Math.max(...all) - Math.min(...all)),
       fairMin: fair.min_satisfaction,
       avgMin: avg.min_satisfaction,
       fairMean: fair.mean_satisfaction,
@@ -108,6 +119,7 @@ for (let g = 0; g < GROUPS; g++) {
   }
 }
 
+const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : 0);
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
 const pp = (x: number) => `${(x * 100).toFixed(1)} pts`;
 const differ = rows.filter((r) => r.differs);
@@ -116,6 +128,7 @@ const flexible = rows.reduce((a, r) => a + r.flexible, 0);
 console.log(`\n\ngroups evaluated: ${rows.length} (${rows.filter((r) => r.kind === "place").length} dinner, ${rows.filter((r) => r.kind === "movie").length} movie)`);
 console.log(`people flagged "flexible tonight": ${flexible}/${people} (${((100 * flexible) / Math.max(1, people)).toFixed(0)}%)`);
 console.log(`fair pick differs from the highest-average pick: ${differ.length}/${rows.length} (${((100 * differ.length) / Math.max(1, rows.length)).toFixed(0)}%)`);
-console.log(`  gain where they differ: +${pp(mean(differ.map((r) => r.fairMin - r.avgMin)))} for the least-matched person (flexibility-adjusted)`);
+console.log(`  gain where they differ: +${pp(mean(differ.map((r) => r.fairMin - r.avgMin)))} for the least-matched person with a preference`);
 console.log(`  cost where they differ: -${pp(mean(differ.map((r) => r.avgMean - r.fairMean)))} of group-average match`);
+console.log(`  raw Qloo affinity gain for that person: median +${median(differ.map((r) => r.rawGain)).toFixed(3)}, i.e. ${(100 * median(differ.map((r) => r.rawGainShare))).toFixed(0)}% of their own spread over the shortlist`);
 console.log(`flexibility-awareness changed the pick vs plain maximin: ${rows.filter((r) => r.plainDiffers).length}/${rows.length}`);

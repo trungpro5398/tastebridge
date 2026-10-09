@@ -26,23 +26,20 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
   const avgId = decision.majority?.entity.entity_id;
   if (decision.majority && !options.some((o) => o.entity.entity_id === avgId)) options.push(decision.majority);
 
-  // Each option moves toward the people it suits better than its own average, and away from anyone it
-  // leaves behind. Evenly balanced options stay in the middle: that is the bridge.
+  // Each option is pushed away from the one person it suits least, further the more it leaves them
+  // behind the others. Options that leave nobody behind stay in the middle: that is the bridge.
   const offset = (c: RankedCandidate) => {
     const sats = people.map((p) => c.scores.find((x) => x.member_id === p.id)?.satisfaction ?? 0);
     const mean = sats.reduce((a, b) => a + b, 0) / sats.length;
-    let dx = 0;
-    let dy = 0;
-    people.forEach((p, i) => {
-      dx += (sats[i] - mean) * (p.x - C);
-      dy += (sats[i] - mean) * (p.y - C);
-    });
-    return { dx: dx / R, dy: dy / R };
+    const worst = sats.indexOf(Math.min(...sats));
+    const gap = mean - sats[worst];
+    const p = people[worst];
+    return { dx: (-gap * (p.x - C)) / R, dy: (-gap * (p.y - C)) / R };
   };
-  const spread = Math.max(0.25, ...options.map((c) => Math.hypot(offset(c).dx, offset(c).dy)));
+  const spread = Math.max(0.2, ...options.map((c) => Math.hypot(offset(c).dx, offset(c).dy)));
   const place = (c: RankedCandidate) => {
     const { dx, dy } = offset(c);
-    const k = (R * 0.8) / spread; // largest imbalance reaches 80% of the way to a corner
+    const k = (R * 0.8) / spread; // the most lopsided option reaches 80% of the way to the opposite corner
     return { x: C + dx * k, y: C + dy * k };
   };
   const short = (n: string) => (n.length > 18 ? `${n.slice(0, 17).trimEnd()}…` : n);
@@ -61,8 +58,8 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
       <figcaption>
         <h3 className="font-display text-lg font-semibold">Taste map: where the bridge is</h3>
         <p className="text-sm text-muted">
-          Each person is a corner. An option drifts toward the people it suits more than the others, and away from
-          anyone it leaves behind. Options that suit everyone evenly stay in the middle: that is the bridge.
+          Each person is a corner. Every option is pushed away from the person it suits least, further the more it
+          leaves them behind. Options that leave nobody behind stay in the middle: that is the bridge.
         </p>
       </figcaption>
       <div className="relative mx-auto mt-3 max-w-[420px]">

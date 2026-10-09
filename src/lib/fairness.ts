@@ -6,7 +6,8 @@
  * Raw affinities are not comparable across people, so we convert them to a within-person
  * percentile s_i(c) ∈ [0,1] ("how high does c rank among tonight's options for i").
  *
- *   group choice = argmax_c  min_i s_i(c)          (maximin / Rawlsian: protect the least-happy)
+ *   group choice = argmax_c  min_{i cares} s_i(c)  (maximin over people with a preference tonight;
+ *                                                   everyone if nobody has one)
  *   tie-break    = argmax_c  Π_i (ε + s_i(c))      (Nash welfare: balanced, scale-free)
  *   baseline     = argmax_c  mean_i s_i(c)         (what averaging / majority vote would pick)
  */
@@ -87,10 +88,13 @@ export function rankFairly(
   const ranked = shortlist.map<RankedCandidate>((entity, idx) => {
     const scores = scoresByMember.map((row) => row[idx]);
     const sats = scores.map((s) => s.satisfaction);
+    // Flexible people's scores are mostly noise: they must not decide whom the pick protects.
+    const cared = scores.filter((s) => !s.flexible).map((s) => s.satisfaction);
     return {
       entity,
       scores,
-      min_satisfaction: Math.min(...sats),
+      min_satisfaction: Math.min(...(cared.length ? cared : sats)),
+      min_all: Math.min(...sats),
       mean_satisfaction: +(sats.reduce((a, b) => a + b, 0) / sats.length).toFixed(3),
       nash: +sats.reduce((p, s) => p * (EPS + s), 1).toFixed(6),
     };

@@ -32,7 +32,7 @@ const why = [
   },
   {
     title: "Shows its working",
-    body: "Each score comes from Qloo, with the favourite that drove it and the exact requests made. Claude writes the words, never the numbers.",
+    body: "Every number comes from Qloo, with the exact requests listed and the favourite behind a match when one clearly stands out. Claude writes the words, never the numbers, and can't describe a vibe Qloo doesn't tag.",
   },
   {
     title: "Taste, not questionnaires",

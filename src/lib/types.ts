@@ -90,7 +90,10 @@ export type MemberScore = {
 export type RankedCandidate = {
   entity: InsightEntity;
   scores: MemberScore[];
+  /** lowest taste match among members with a preference tonight (everyone if all are flexible) */
   min_satisfaction: number;
+  /** lowest taste match over everyone, flexible members included */
+  min_all?: number;
   mean_satisfaction: number;
   nash: number;
 };
@@ -132,6 +135,8 @@ export type Decision = {
   group_message?: string;
   /** how alike the group's tastes are across the shortlist */
   compatibility?: import("./fairness").Compatibility;
+  /** how many options were on the scored shortlist (the ranked list keeps only the top 10) */
+  shortlist_size?: number;
   /** Claude tokens spent on this decision */
   agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };

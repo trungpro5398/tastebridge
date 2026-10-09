@@ -51,7 +51,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
           <div style={{ fontSize: 30, color: "#6b6477" }}>
             {top
-              ? `Everyone's taste match is ${Math.round(top.min_satisfaction * 100)}% or higher`
+              ? `Nobody with a preference is below ${Math.round(top.min_satisfaction * 100)}%`
               : names
                 ? `In so far: ${names}`
                 : "Films, shows, artists or books. Takes 30 seconds."}

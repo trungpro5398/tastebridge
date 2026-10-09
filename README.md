@@ -30,7 +30,7 @@ It then re-plans and explains what changed. Requests accumulate, and the rules f
 ### See the trade-off
 - A scatter of every option (group average vs the least-matched person).
 - A Leaflet/OpenStreetMap map of the shortlist.
-- A **taste compatibility** score: the mean pairwise correlation of members' ranks, plus "taste twins" and "furthest apart".
+- A **taste compatibility** score: the correlation of members' taste matches across the shortlist, averaged over pairs and weighted by how decisive each person is, plus "taste twins" and "furthest apart" (named only when the correlation is clear).
 
 ### Measuring real outcomes
 After each result, people get three one-tap questions:

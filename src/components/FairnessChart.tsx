@@ -36,7 +36,7 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
       <figcaption>
         <h3 className="font-display text-lg font-semibold">Every option, at a glance</h3>
         <p className="text-sm text-muted">
-          Right means a higher group average. Up means the least-matched person is better off. TasteBridge picks the
+          Right means a higher group average. Up means the least-matched person with a preference is better off. TasteBridge picks the
           highest dot{differs ? "; a simple average picks the one furthest right" : ""}.
         </p>
       </figcaption>
@@ -61,7 +61,7 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
             textAnchor="middle"
             className="fill-[var(--muted)] text-[12px]"
           >
-            Lowest person&apos;s match
+            Lowest match among people who care
           </text>
           {points.map((p) => {
             const cx = x(p.c.mean_satisfaction);
@@ -115,7 +115,7 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
               <b className="text-sm">{pct(hover.c.mean_satisfaction)}</b> <span className="text-muted">group average</span>
             </p>
             <p>
-              <b className="text-sm">{pct(hover.c.min_satisfaction)}</b> <span className="text-muted">lowest person</span>
+              <b className="text-sm">{pct(hover.c.min_satisfaction)}</b> <span className="text-muted">lowest among people who care</span>
             </p>
           </div>
         )}
@@ -140,7 +140,7 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
             <tr>
               <th>Option</th>
               <th>Group average</th>
-              <th>Lowest person</th>
+              <th>Lowest match among people who care</th>
             </tr>
           </thead>
           <tbody>

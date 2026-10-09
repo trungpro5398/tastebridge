@@ -166,3 +166,19 @@ test("a different request that yields the same shortlist keeps the existing scor
   await session.scoreMembers();
   assert.equal(session.ranked, ranked);
 });
+
+test("a calm request is enforced in code and survives agent retries", async () => {
+  const session = new DecisionSession(huddle("Bà likes it calm. Under $$$."));
+  await session.generateCandidates({ avoidTags: [], preferTags: [] });
+  assert.match(String(session.filters.avoid_tags), /ambience:qloo:loud/);
+  assert.match(String(session.filters.avoid_tags), /ambience:qloo:bustling/);
+  assert.match(String(session.filters.prefer_tags), /ambience:qloo:calm/);
+  for (const e of session.shortlist) assert.ok(!e.tags?.some((t) => /loud|bustling/i.test(t.name)), e.name);
+});
+
+test("explanations cannot claim an ambience the option's Qloo tags don't support", async () => {
+  const { ungroundedAmbience } = await import("../src/lib/decide");
+  assert.deepEqual(ungroundedAmbience("It suits a calmer Sunday.", ["Bustling", "Elegant"]), ["calmer"]);
+  assert.deepEqual(ungroundedAmbience("A calm, cosy spot.", ["Calm", "Cozy"]), []);
+  assert.deepEqual(ungroundedAmbience("Great dumplings for everyone.", []), []);
+});

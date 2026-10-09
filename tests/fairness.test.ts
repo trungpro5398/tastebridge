@@ -116,3 +116,23 @@ test("compatibility never names flexible people as taste twins", async () => {
   // A and D move in lockstep (r = 1) but barely care; the score follows B vs C (r = -1)
   assert.ok(c.score < 0.3);
 });
+
+test("indifferent people cannot overrule the people who care", () => {
+  const four: Member[] = ["a", "b", "c", "d"].map((id) => ({ id, name: id, picks: [], joined_at: "" }));
+  const shortlist = ["soup", "santucci", "other"].map((id) => entity(id));
+  const perMember = {
+    // a and b care, and both clearly prefer soup
+    a: [entity("soup", 0.9), entity("santucci", 0.6), entity("other", 0.3)],
+    b: [entity("soup", 0.85), entity("santucci", 0.55), entity("other", 0.3)],
+    // c and d barely care, and lean very slightly the other way
+    c: [entity("soup", 0.6), entity("santucci", 0.605), entity("other", 0.61)],
+    d: [entity("soup", 0.6), entity("santucci", 0.605), entity("other", 0.601)],
+  };
+  const r = rankFairly(shortlist, four, perMember);
+  assert.equal(r.ranked[0].entity.entity_id, "soup");
+  const soup = r.ranked[0];
+  assert.ok(soup.scores.filter((s) => s.flexible).map((s) => s.member_id).join() === "c,d");
+  // the floor is about a and b; the true minimum (a flexible person) is reported separately
+  assert.ok(soup.min_satisfaction >= 0.99);
+  assert.ok((soup.min_all ?? 1) < soup.min_satisfaction);
+});
