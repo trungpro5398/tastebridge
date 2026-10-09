@@ -49,26 +49,40 @@ export async function createHuddle(input: {
 
 export async function getHuddle(id: string): Promise<Huddle | null> {
   if (!sb) return mem.get(id) ?? null;
-  const { data, error } = await sb.from("huddles").select("*, members(*)").eq("id", id).maybeSingle();
+  // never select members.edit_token: this object is returned to anyone with the link
+  const { data, error } = await sb
+    .from("huddles")
+    .select("id, title, kind, location, notes, result, created_at, members(id, name, picks, joined_at)")
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   const members = ((data.members ?? []) as Member[]).sort((a, b) => a.joined_at.localeCompare(b.joined_at));
   return { ...data, location: data.location ?? undefined, notes: data.notes ?? undefined, members } as Huddle;
 }
 
-export async function addMember(huddleId: string, name: string, picks: Entity[]): Promise<Member> {
+const memTokens = ((globalThis as unknown as { __tokens?: Map<string, string> }).__tokens ??= new Map());
+
+/** Adds a member and returns a secret edit token that only this member's browser ever sees. */
+export async function addMember(
+  huddleId: string,
+  name: string,
+  picks: Entity[],
+): Promise<Member & { editToken: string }> {
   const m: Member = { id: crypto.randomUUID(), name, picks, joined_at: new Date().toISOString() };
+  const editToken = crypto.randomUUID();
   if (!sb) {
     const h = mem.get(huddleId);
     if (!h) throw new Error("not found");
     h.members.push(m);
     h.result = null;
-    return m;
+    memTokens.set(m.id, editToken);
+    return { ...m, editToken };
   }
-  const { error } = await sb.from("members").insert({ ...m, huddle_id: huddleId });
+  const { error } = await sb.from("members").insert({ ...m, huddle_id: huddleId, edit_token: editToken });
   if (error) throw new Error(error.message);
   await sb.from("huddles").update({ result: null }).eq("id", huddleId);
-  return m;
+  return { ...m, editToken };
 }
 
 export async function saveDecision(huddleId: string, result: Decision) {
@@ -84,7 +98,7 @@ export async function saveDecision(huddleId: string, result: Decision) {
 export type FeedbackQuestion = "worked" | "clear" | "went";
 
 /** One-tap answers after a decision ("did it work?", "were the % clear?", "did you go?"); no personal data. */
-export async function addFeedback(huddleId: string, q: FeedbackQuestion, a: "yes" | "no") {
+export async function addFeedback(huddleId: string, q: FeedbackQuestion, a: "yes" | "no", ipHash = "local") {
   if (!sb) {
     const h = mem.get(huddleId);
     if (!h) throw new Error("not found");
@@ -92,7 +106,10 @@ export async function addFeedback(huddleId: string, q: FeedbackQuestion, a: "yes
     return;
   }
   // append-only rows: concurrent answers can't overwrite each other
-  const { error } = await sb.from("feedback").insert({ huddle_id: huddleId, q, a });
+  // unique (huddle_id, q, ip_hash): a repeat answer updates instead of adding a row
+  const { error } = await sb
+    .from("feedback")
+    .upsert({ huddle_id: huddleId, q, a, ip_hash: ipHash, at: new Date().toISOString() }, { onConflict: "huddle_id,q,ip_hash" });
   if (error) throw new Error(error.message);
 }
 
@@ -127,17 +144,24 @@ export async function setDeciding(huddleId: string, active: boolean) {
 }
 
 /** Remove a member (the member id, kept in their browser, acts as the edit token). Clears the result. */
-export async function removeMember(huddleId: string, memberId: string): Promise<boolean> {
+export async function removeMember(huddleId: string, memberId: string, editToken: string): Promise<boolean> {
+  if (!editToken) return false;
   if (!sb) {
     const h = mem.get(huddleId);
-    if (!h) return false;
+    if (!h || memTokens.get(memberId) !== editToken) return false;
     const before = h.members.length;
     h.members = h.members.filter((m: Member) => m.id !== memberId);
     if (h.members.length === before) return false;
     h.result = null;
     return true;
   }
-  const { data, error } = await sb.from("members").delete().eq("huddle_id", huddleId).eq("id", memberId).select("id");
+  const { data, error } = await sb
+    .from("members")
+    .delete()
+    .eq("huddle_id", huddleId)
+    .eq("id", memberId)
+    .eq("edit_token", editToken)
+    .select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) return false;
   await sb.from("huddles").update({ result: null }).eq("id", huddleId);

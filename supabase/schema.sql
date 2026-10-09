@@ -59,3 +59,9 @@ create table if not exists feedback (
 );
 create index if not exists feedback_huddle_idx on feedback(huddle_id);
 alter table feedback enable row level security;
+
+-- Secret per-member edit token (returned once to the member's browser; never in public reads).
+alter table members add column if not exists edit_token text;
+-- One answer per question per browser network per huddle (keeps /impact honest).
+alter table feedback add column if not exists ip_hash text;
+create unique index if not exists feedback_once on feedback(huddle_id, q, ip_hash);

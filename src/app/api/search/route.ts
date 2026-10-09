@@ -31,5 +31,8 @@ export async function GET(request: Request) {
     .filter((t): t is EntityType => ALLOWED.has(t as EntityType));
   // Favourites: cultural taste signals only (no albums/people duplicates, no venues).
   const results = await searchEntities(q.slice(0, 80), types.length ? types : FAVOURITE_TYPES, 8);
-  return Response.json(results);
+  // the picker needs a small payload; tags stay server-side except a few for explanations
+  return Response.json(
+    results.map(({ entity_id, name, type, image, meta, tags }) => ({ entity_id, name, type, image, meta, tags: tags?.slice(0, 12) })),
+  );
 }

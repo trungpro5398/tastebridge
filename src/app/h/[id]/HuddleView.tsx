@@ -41,6 +41,15 @@ function readStorage(key: string) {
 type Question = "worked" | "clear" | "went";
 type Answers = Partial<Record<Question, "yes" | "no">>;
 
+function parseMe(v: string | null): { id: string; token?: string } | null {
+  if (!v) return null;
+  try {
+    const o = JSON.parse(v);
+    if (o && typeof o.id === "string") return o;
+  } catch {}
+  return { id: v };
+}
+
 function safeParse(v: string): Answers {
   try {
     return JSON.parse(v) as Answers;
@@ -117,8 +126,10 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   const [copied, setCopied] = useState(false);
   const storageKey = `tb:${initial.id}`;
 
+  // stored as JSON {id, token}; older entries were a bare member id
   const stored = useSyncExternalStore(subscribeStorage, () => readStorage(storageKey), () => null);
-  const joinedAs = justJoined ?? stored;
+  const storedMe = parseMe(stored);
+  const joinedAs = justJoined ?? storedMe?.id ?? null;
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/huddles/${initial.id}`, { cache: "no-store" }).catch(() => null);
@@ -164,7 +175,7 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     setJoining(false);
     if (!res?.ok || !data.id) return setError(data.error ?? "Could not join. Please try again.");
     try {
-      localStorage.setItem(storageKey, data.id);
+      localStorage.setItem(storageKey, JSON.stringify({ id: data.id, token: data.editToken }));
     } catch {}
     setJustJoined(data.id);
     setPicks([]);
@@ -226,7 +237,11 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     const me = huddle.members.find((m) => m.id === joinedAs);
     if (!me) return;
     setError("");
-    const res = await fetch(`/api/huddles/${huddle.id}/members/${me.id}`, { method: "DELETE" }).catch(() => null);
+    const token = parseMe(readStorage(storageKey))?.token ?? "";
+    const res = await fetch(`/api/huddles/${huddle.id}/members/${me.id}`, {
+      method: "DELETE",
+      headers: { "x-edit-token": token },
+    }).catch(() => null);
     if (!res || (!res.ok && res.status !== 404)) return setError("Could not edit right now. Try again.");
     try {
       localStorage.removeItem(storageKey);
