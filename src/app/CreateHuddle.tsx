@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { guessCity, useTimeZone } from "@/lib/locale";
 
 const KINDS = [
   { value: "place", label: "Dinner spot", emoji: "🍜" },
@@ -14,6 +15,8 @@ export default function CreateHuddle() {
   const [kind, setKind] = useState<(typeof KINDS)[number]["value"]>("place");
   const [busy, setBusy] = useState<"create" | null>(null);
   const [error, setError] = useState("");
+  const tz = useTimeZone();
+  const city = tz ? guessCity(tz) : "Melbourne";
 
   async function submit(form: FormData) {
     setBusy("create");
@@ -76,7 +79,8 @@ export default function CreateHuddle() {
             <input
               id="location"
               name="location"
-              defaultValue="Melbourne"
+              key={city}
+              defaultValue={city}
               maxLength={80}
               className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
             />

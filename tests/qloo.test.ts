@@ -68,7 +68,21 @@ test("venue addresses shorten to the suburb", async () => {
   assert.equal(shortAddress("380 Brunswick St Fitzroy VIC 3065 Australia"), "Fitzroy");
   assert.equal(shortAddress("4 Princes Hwy Beaconsfield VIC 3807 Australia"), "Beaconsfield");
   assert.equal(shortAddress("797 Glenferrie Rd Hawthorn VIC 3122 Australia"), "Hawthorn");
-  assert.equal(shortAddress("1 Main St, Springfield, IL 62701, USA"), "1 Main St, Springfield");
+  assert.equal(shortAddress("1 Main St, Springfield, IL 62701, USA"), "Springfield");
+  assert.equal(shortAddress("8715 Melrose Ave West Hollywood, CA 90069"), "West Hollywood");
+  assert.equal(shortAddress("1 Sky Garden Walk London EC3M 8AF United Kingdom"), "London");
+  assert.equal(shortAddress("189 Grand St New York, NY 10013"), "New York");
   assert.equal(shortAddress("Evan Walker Bridge Southbank VIC 3006 Australia"), "Southbank");
   assert.equal(shortAddress(undefined), undefined);
+});
+
+test("dinner keeps restaurants and cafés, drops malls, markets, hotels and drink-first bars", async () => {
+  const { isDiningVenue } = await qloo;
+  const g = (x: string) => ({ primaryGenre: `urn:tag:genre:place:${x}` });
+  assert.equal(isDiningVenue(g("restaurant")), true);
+  assert.equal(isDiningVenue(g("restaurant:italian")), true);
+  assert.equal(isDiningVenue(g("restaurant:cafe")), true);
+  for (const x of ["shopping_mall", "market", "hotel", "restaurant:bar", "restaurant:cocktail_bar", "restaurant:lounge_bar"])
+    assert.equal(isDiningVenue(g(x)), false, x);
+  assert.equal(isDiningVenue({}), true);
 });

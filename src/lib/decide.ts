@@ -6,7 +6,7 @@
 import "server-only";
 import { groupCompatibility, rankFairly } from "./fairness";
 import { highlights } from "./highlights";
-import { DINNER_TAG, compareTastes, findTags, insights, qlooMode } from "./qloo";
+import { DINNER_EXCLUDE, DINNER_TAG, compareTastes, findTags, insights, isDiningVenue, qlooMode } from "./qloo";
 import {
   KIND_TO_TYPE,
   type Decision,
@@ -111,7 +111,7 @@ export class DecisionSession {
     }
     const isPlace = this.huddle.kind === "place";
     const tags = [...new Set([...this.requiredTags, ...(opts.tags ?? [])])];
-    const avoid = [...new Set(opts.avoidTags ?? [])].filter((t) => !tags.includes(t));
+    const avoid = [...new Set([...(isPlace ? DINNER_EXCLUDE : []), ...(opts.avoidTags ?? [])])].filter((t) => !tags.includes(t));
     const prefer = [...new Set(opts.preferTags ?? [])];
     const budget = isPlace ? parsePrice(this.huddle.notes) : undefined;
     const priceMax = budget === undefined ? opts.priceMax : Math.min(budget, opts.priceMax ?? budget);
@@ -129,10 +129,12 @@ export class DecisionSession {
       priceMax,
       popularityMax: opts.popularityMax,
       yearMin: opts.yearMin,
-      // ask for a little more so the distance filter still leaves a full shortlist
-      take: maxKm ? Math.min(take + 10, 50) : take,
+      // ask for more so the venue-type and distance filters still leave a full shortlist
+      take: isPlace ? Math.min(take + 20, 50) : take,
     });
-    const { kept, droppedFar } = maxKm ? withinRadius(raw, maxKm) : { kept: raw, droppedFar: 0 };
+    const dining = isPlace ? raw.filter(isDiningVenue) : raw;
+    const droppedNonDining = raw.length - dining.length;
+    const { kept, droppedFar } = maxKm ? withinRadius(dining, maxKm) : { kept: dining, droppedFar: 0 };
     this.shortlist = kept.slice(0, take);
     this.location = location;
     this.filters = {
@@ -158,11 +160,12 @@ export class DecisionSession {
       `${this.shortlist.length} candidates from the group's combined taste` +
         (opts.area ? ` around ${opts.area}` : "") +
         (tags.length ? `, must be: ${label(tags)}` : "") +
-        (avoid.length ? `, avoiding: ${label(avoid)}` : "") +
+        (opts.avoidTags?.length ? `, avoiding: ${label(opts.avoidTags)}` : "") +
         (prefer.length ? `, leaning towards: ${label(prefer)}` : "") +
         (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : "") +
         (opts.popularityMax ? ", off the beaten track" : "") +
         (opts.yearMin ? `, from ${opts.yearMin}` : "") +
+        (droppedNonDining ? `; dropped ${droppedNonDining} drink-first or non-restaurant venues` : "") +
         (droppedFar ? `; dropped ${droppedFar} more than ${maxKm} km away` : ""),
     );
     return this.shortlist;

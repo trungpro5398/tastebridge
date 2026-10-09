@@ -1,7 +1,9 @@
+import type React from "react";
 import Avatar from "@/components/Avatar";
 import FairnessChart from "@/components/FairnessChart";
 import ShortlistMap from "@/components/ShortlistMap";
 import { highlights } from "@/lib/highlights";
+import { useTimeZone, watchRegion } from "@/lib/locale";
 import type { Decision, MemberScore, RankedCandidate } from "@/lib/types";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -41,20 +43,33 @@ function KnownFor({ c, n = 4 }: { c: RankedCandidate; n?: number }) {
 
 /** The obvious next action once the group has a pick. */
 function NextStep({ c }: { c: RankedCandidate }) {
+  const tz = useTimeZone();
   const q = encodeURIComponent([c.entity.name, c.entity.address ?? c.entity.meta?.split(" · ")[0]].filter(Boolean).join(" "));
   const isPlace = c.entity.type === "urn:entity:place";
   const href = isPlace
     ? `https://www.google.com/maps/search/?api=1&query=${q}`
-    : `https://www.justwatch.com/au/search?q=${encodeURIComponent(c.entity.name)}`;
+    : `https://www.justwatch.com/${tz ? watchRegion(tz) : "au"}/search?q=${encodeURIComponent(c.entity.name)}`;
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink hover:opacity-90"
-    >
-      {isPlace ? "Open in Maps" : "Find where to watch"}
-    </a>
+    <div className="flex flex-wrap gap-2">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink hover:opacity-90"
+      >
+        {isPlace ? "Open in Maps" : "Find where to watch"}
+      </a>
+      {c.entity.website && (
+        <a
+          href={c.entity.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center rounded-xl border border-line px-4 py-2.5 text-sm font-medium hover:bg-soft"
+        >
+          Website
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -181,7 +196,16 @@ function MiniMeter({ scores, colors }: { scores: MemberScore[]; colors: Colors }
   );
 }
 
-export default function Results({ decision, colors }: { decision: Decision; colors: Colors }) {
+export default function Results({
+  decision,
+  colors,
+  afterPick,
+}: {
+  decision: Decision;
+  colors: Colors;
+  /** actions shown right under the pick (share, adjust) */
+  afterPick?: React.ReactNode;
+}) {
   const byId = new Map(decision.ranked.map((r) => [r.entity.entity_id, r]));
   const picks = decision.picks.map((p) => ({ p, r: byId.get(p.entity_id) })).filter((x) => x.r) as {
     p: Decision["picks"][number];
@@ -262,6 +286,8 @@ export default function Results({ decision, colors }: { decision: Decision; colo
           </ul>
         </div>
       </article>
+
+      {afterPick}
 
       {decision.compatibility && (
         <Compatibility c={decision.compatibility} colorOfName={(n) => color(top.r.scores.find((s) => s.member_name === n)?.member_id ?? "")} />

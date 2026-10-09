@@ -67,3 +67,13 @@ test("group compatibility finds taste twins and the furthest-apart pair", async 
   assert.ok(c.furthest && [c.furthest.a, c.furthest.b].includes("C"));
   assert.ok(c.score < 0.5);
 });
+
+test("time zone picks a sensible default city and streaming region", async () => {
+  const { guessCity, watchRegion } = await import("../src/lib/locale");
+  assert.equal(guessCity("America/New_York"), "New York");
+  assert.equal(guessCity("Australia/Melbourne"), "Melbourne");
+  assert.equal(guessCity("Mars/Olympus"), "Melbourne");
+  assert.equal(watchRegion("America/Los_Angeles"), "us");
+  assert.equal(watchRegion("Europe/London"), "uk");
+  assert.equal(watchRegion("Australia/Sydney"), "au");
+});

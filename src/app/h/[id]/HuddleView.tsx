@@ -9,6 +9,7 @@ import { memberColor } from "@/lib/members";
 import type { Decision, Entity, Huddle } from "@/lib/types";
 
 const KIND_LABEL = { place: "Dinner spot", movie: "Movie", tv_show: "TV show" } as const;
+const KIND_NOUN = { place: "dinner spot", movie: "movie", tv_show: "show" } as const;
 type Step = { tool: string; summary: string };
 const REFINE_CHIPS = {
   place: ["Somewhere quieter", "Closer to the city", "Cheaper", "Surprise us"],
@@ -257,57 +258,72 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
 
       {huddle.result && !deciding && (
         <div ref={resultRef} className="scroll-mt-4 space-y-4">
-          <Results decision={huddle.result} colors={colors} />
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const text = refineText.trim();
-              if (!text) return;
-              setRefineText("");
-              decide(true, text);
-            }}
-            className="rounded-3xl border border-line bg-card p-5 sm:p-6"
-          >
-            <h3 className="font-display text-lg font-semibold">Not quite right? Tell the agent</h3>
-            <p className="text-sm text-muted">
-              It re-plans with Qloo and keeps your earlier requests. Everyone still gets a fair share.
-            </p>
-            {huddle.result.refinements && huddle.result.refinements.length > 0 && (
-              <p className="mt-2 text-sm">
-                <span className="text-muted">So far you asked: </span>
-                {huddle.result.refinements.map((r) => `“${r}”`).join(", ")}
-              </p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {REFINE_CHIPS[huddle.kind].map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => decide(true, c)}
-                  className="rounded-full border border-line px-3 py-1.5 text-sm hover:bg-soft"
+          <Results
+            decision={huddle.result}
+            colors={colors}
+            afterPick={
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={shareResult} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink hover:opacity-90">
+                    {copied ? "Message copied" : "Send the pick to the group"}
+                  </button>
+                  <button onClick={() => decide(true)} className="rounded-xl border border-line bg-card px-4 py-2.5 text-sm hover:bg-soft">
+                    Run again
+                  </button>
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const text = refineText.trim();
+                    if (!text) return;
+                    setRefineText("");
+                    decide(true, text);
+                  }}
+                  className="rounded-3xl border border-line bg-card p-5 sm:p-6"
                 >
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex gap-2">
-              <input
-                value={refineText}
-                onChange={(e) => setRefineText(e.target.value)}
-                maxLength={160}
-                aria-label="Ask the agent to adjust the pick"
-                placeholder={huddle.kind === "place" ? "e.g. no Japanese, somewhere near Fitzroy" : "e.g. something lighter, no horror"}
-                className="min-w-0 flex-1 rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
-              />
-              <button
-                disabled={!refineText.trim()}
-                className="shrink-0 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-40"
-              >
-                Adjust
-              </button>
-            </div>
-          </form>
-          <div className="flex flex-col gap-4 rounded-3xl border border-line bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <h3 className="font-display text-lg font-semibold">Not quite right? Tell the agent</h3>
+                  <p className="text-sm text-muted">
+                    It re-plans with Qloo and keeps your earlier requests. Everyone still gets a fair share.
+                  </p>
+                  {huddle.result.refinements && huddle.result.refinements.length > 0 && (
+                    <p className="mt-2 text-sm">
+                      <span className="text-muted">So far you asked: </span>
+                      {huddle.result.refinements.map((r) => `“${r}”`).join(", ")}
+                    </p>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {REFINE_CHIPS[huddle.kind].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => decide(true, c)}
+                        className="rounded-full border border-line px-3 py-1.5 text-sm hover:bg-soft"
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      value={refineText}
+                      onChange={(e) => setRefineText(e.target.value)}
+                      maxLength={160}
+                      aria-label="Ask the agent to adjust the pick"
+                      placeholder={huddle.kind === "place" ? "e.g. no Japanese, somewhere near Fitzroy" : "e.g. something lighter, no horror"}
+                      className="min-w-0 flex-1 rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
+                    />
+                    <button
+                      disabled={!refineText.trim()}
+                      className="shrink-0 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-40"
+                    >
+                      Adjust
+                    </button>
+                  </div>
+                </form>
+              </>
+            }
+          />
+          <div className="flex flex-col gap-3 rounded-3xl border border-line bg-card p-5 sm:flex-row sm:items-center sm:px-6">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {voted ? (
                 <span className="text-muted">Thanks, noted.</span>
@@ -322,14 +338,6 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
                   </button>
                 </>
               )}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={shareResult} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
-                {copied ? "Link copied" : "Share the pick"}
-              </button>
-              <button onClick={() => decide(true)} className="rounded-xl border border-line px-4 py-2 text-sm hover:bg-soft">
-                Run again
-              </button>
             </div>
           </div>
         </div>
@@ -453,6 +461,24 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
           })}
         </ol>
       </section>
+
+      {!joinedAs && huddle.members.length > 0 && huddle.members.length < 8 && (
+        <div className="flex flex-col gap-3 rounded-3xl bg-brand/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm">
+            <span className="font-semibold">You&apos;re invited.</span> Add three things you love (a film, a show, an
+            artist) and TasteBridge finds the {KIND_NOUN[huddle.kind]} the whole group will enjoy. It takes 30 seconds.
+          </p>
+          <button
+            onClick={() => {
+              setShowJoin(true);
+              requestAnimationFrame(() => document.getElementById("member-name")?.focus());
+            }}
+            className="shrink-0 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink hover:opacity-90"
+          >
+            Add my taste
+          </button>
+        </div>
+      )}
 
       {showInvite && <InvitePanel title={huddle.title} onClose={() => setShowInvite(false)} />}
 

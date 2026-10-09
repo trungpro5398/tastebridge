@@ -15,6 +15,20 @@ export const qlooMode: "live" | "mock" = KEY ? "live" : "mock";
 /** Qloo genre tag that keeps "dinner spot" shortlists to restaurants (live data only). */
 export const DINNER_TAG = qlooMode === "live" ? "urn:tag:category:place:restaurant" : undefined;
 
+/** Places that carry a restaurant tag but aren't somewhere to have dinner (malls, markets, hotels). */
+export const DINNER_EXCLUDE =
+  qlooMode === "live"
+    ? ["urn:tag:genre:place:shopping_mall", "urn:tag:genre:place:market", "urn:tag:genre:place:hotel"]
+    : [];
+
+/** Keep restaurants and cafés; drop drink-first venues (bars, lounges, pubs, clubs) for a dinner pick. */
+export function isDiningVenue(e: { primaryGenre?: string }) {
+  const g = e.primaryGenre;
+  if (!g) return true;
+  if (!g.startsWith("urn:tag:genre:place:restaurant")) return false;
+  return !/:(bar|cocktail_bar|lounge_bar|wine_bar|sports_bar|live_music_bar|pub|nightclub|lounge|rooftop_lounge)$/.test(g);
+}
+
 export class QlooError extends Error {
   constructor(
     message: string,
@@ -153,6 +167,7 @@ function toEntity(r: Raw): Entity {
     lon: num(loc.lon),
     website: typeof props.website === "string" ? props.website : undefined,
     closed: props.is_closed === true ? true : undefined,
+    primaryGenre: ((props.primary_genre as Raw | undefined)?.id as string) ?? undefined,
   };
 }
 
@@ -282,16 +297,30 @@ export async function compareTastes(a: string[], b: string[], type: EntityType) 
     .slice(0, 6);
 }
 
-/** "380 Brunswick St Fitzroy VIC 3065 Australia" → "Fitzroy"; otherwise the first two comma parts. */
+const STREET_WORD =
+  /^(St|Rd|Ave|Hwy|Pde|Dr|Ln|Lane|Street|Road|Pl|Ct|Cres|Blvd|Tce|Way|Cl|Gr|Sq|Bridge|Arcade|Mall|Walk|Promenade|Esplanade|Wharf|Alley|Place|Ct|Pkwy|Hwy|Broadway)\.?$/i;
+
+/** Last words before the postcode, minus the street part: "380 Brunswick St Fitzroy" → "Fitzroy". */
+function localityFrom(chunk: string) {
+  const words = chunk.trim().split(/\s+/);
+  const i = words.findLastIndex((w) => STREET_WORD.test(w));
+  return words.slice(i + 1).join(" ") || words.join(" ");
+}
+
+/**
+ * Suburb/city from a full address:
+ * AU "380 Brunswick St Fitzroy VIC 3065 Australia" → "Fitzroy";
+ * US "8715 Melrose Ave West Hollywood, CA 90069" → "West Hollywood";
+ * UK "1 Sky Garden Walk London EC3M 8AF United Kingdom" → "London".
+ */
 export function shortAddress(addr?: string) {
   if (!addr) return undefined;
   const au = addr.match(/([A-Za-z' .-]+?)\s+(?:VIC|NSW|QLD|WA|SA|TAS|ACT|NT)\s+\d{4}/);
-  if (au) {
-    const words = au[1].trim().split(/\s+/);
-    // drop street words before the suburb ("Brunswick St Fitzroy" → "Fitzroy")
-    const i = words.findLastIndex((w) => /^(St|Rd|Ave|Hwy|Pde|Dr|Ln|Lane|Street|Road|Pl|Ct|Cres|Blvd|Tce|Way|Cl|Gr|Sq|Bridge|Arcade|Mall|Walk|Promenade|Esplanade|Wharf|Alley|Place)\.?$/i.test(w));
-    return words.slice(i + 1).join(" ") || words.join(" ");
-  }
+  if (au) return localityFrom(au[1]);
+  const us = addr.match(/(?:^|,)\s*([^,]+?),\s*[A-Z]{2}\s+\d{5}/);
+  if (us) return localityFrom(us[1].replace(/^\d+\s+/, ""));
+  const uk = addr.match(/([A-Za-z' .-]+?)\s+[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/);
+  if (uk) return localityFrom(uk[1]);
   return addr.split(",").slice(0, 2).join(",").trim();
 }
 

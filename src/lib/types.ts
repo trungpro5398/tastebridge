@@ -32,6 +32,8 @@ export type Entity = {
   website?: string;
   /** Qloo marks permanently closed venues */
   closed?: boolean;
+  /** Qloo's primary genre tag for places, e.g. urn:tag:genre:place:restaurant:italian */
+  primaryGenre?: string;
 };
 
 /** A candidate as returned by /v2/insights, plus explainability. */
