@@ -30,14 +30,14 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 4. Maximin and Nash pick the winner. The UI shows each member's match, the favourite behind it, and the simple-average alternative.
 
 **Real run (production, 10 Oct 2026): Sunday lunch, three generations**
-- Bà Lan (Khánh Ly, Trịnh Công Sơn, *The Scent of Green Papaya*), Minh (*The Godfather*, Bruce Springsteen, *Top Gear*), Linh (*Crazy Rich Asians*, Adele, *MasterChef: Australia*) and Mai, the youngest (*Bluey*, *Frozen*, Taylor Swift).
-- Must-have: "Bà likes it calm. Under $$$." The agent looked up Qloo's *calm* and *quiet* ambience tags and used them as soft preferences with a $$ cap.
-- First pass: 22 Melbourne restaurants, 6 of them individual members' own top matches. The fairest option left Minh at 48%.
-- **The agent re-planned on its own:** it added a soft *Vietnamese restaurant* preference, drawn from Bà Lan's favourites, rebuilt the shortlist (24 options, 9 own top matches) and rescored everyone. The lowest match rose from 48% to 55%.
-- A simple average picks Republica St Kilda Beach, where **Bà Lan's taste match is 19%**.
-- TasteBridge picks **Silks** (Southbank), and nobody is below 55%: Bà Lan 65%, Minh 55%, Linh 78%, Mai 62%.
-- On the Taste Map, Silks sits near the middle of the four corners, while Republica is pulled away from Bà Lan.
-- 21 Qloo calls; Claude cost $0.06.
+- A Vietnamese-Australian family in Melbourne. Grandma Lan (Khánh Ly, Trịnh Công Sơn, *The Scent of Green Papaya*), Minh (*Anthony Bourdain: Parts Unknown*, The Rolling Stones, *Heat*), Linh (*The Great British Baking Show*, Céline Dion, *Pride and Prejudice*) and their teenager Mai (*Spider-Man: Into the Spider-Verse*, BTS, *Stranger Things*).
+- Must-have: "Grandma likes it calm. Under $$$." The code turns that into hard rules: up to $$, and no venue Qloo tags loud, noisy, bustling or lively.
+- 21 Melbourne restaurants went on the table; 9 were someone's personal top match.
+- Qloo sees Mai as flexible tonight: her scores barely differ between these options.
+- A simple average picks Kawa Sake Sushi Boat, where **Grandma Lan's match is 37%** (her 15th of 21 options).
+- TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
+- Claude's note stays honest: "No option was tagged calm, so I couldn't confirm the calm request."
+- 11 Qloo calls; Claude cost $0.05.
 
 ## How we built it
 - **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, re-plans when someone is left behind, and writes explanations from tool output only. Diet and budget constraints survive retries. `finalize` enforces the scorer's top-three order, so the model can't override the maths.
