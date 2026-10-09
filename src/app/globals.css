@@ -1,28 +1,33 @@
 @import "tailwindcss";
 
+/* TasteBridge: aubergine + saffron on porcelain. Each member also gets their own colour (lib/members.ts). */
 :root {
-  --background: #fbf7f2;
-  --foreground: #1f1a17;
+  --background: #f7f7fa;
+  --foreground: #221a2e;
   --card: #ffffff;
-  --muted: #6f655d;
-  --line: #ece4da;
-  --brand: #e2553a;
+  --muted: #6b6477;
+  --line: #e7e3ee;
+  --brand: #5b2a86;
   --brand-ink: #ffffff;
-  --accent: #2f6f5e;
-  --soft: #f5ede4;
+  --accent: #f2b134;
+  --accent-ink: #3a2600;
+  --soft: #f1edf6;
+  --good: #1b7f6b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #15120f;
-    --foreground: #f3ece4;
-    --card: #1e1a16;
-    --muted: #a99d91;
-    --line: #2f2923;
-    --brand: #f06a4f;
-    --brand-ink: #1a0f0b;
-    --accent: #6cc3a8;
-    --soft: #261f1a;
+    --background: #14101b;
+    --foreground: #f2eef7;
+    --card: #1d1726;
+    --muted: #a89fb8;
+    --line: #2f2740;
+    --brand: #b892f2;
+    --brand-ink: #1a0f28;
+    --accent: #f4bf55;
+    --accent-ink: #2b1c00;
+    --soft: #261e33;
+    --good: #5ccfb4;
   }
 }
 
@@ -35,12 +40,29 @@
   --color-brand: var(--brand);
   --color-brand-ink: var(--brand-ink);
   --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --color-soft: var(--soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-good: var(--good);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

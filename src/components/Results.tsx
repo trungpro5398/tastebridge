@@ -1,3 +1,4 @@
+import Avatar from "@/components/Avatar";
 import { highlights } from "@/lib/highlights";
 import type { Decision, MemberScore, RankedCandidate } from "@/lib/types";
 
@@ -8,38 +9,27 @@ const TYPE_EMOJI: Record<string, string> = {
   "urn:entity:tv_show": "📺",
 };
 
-function Bar({ s, highlight }: { s: MemberScore; highlight?: boolean }) {
-  const v = Math.round(s.satisfaction * 100);
-  const tone = v >= 70 ? "bg-accent" : v >= 45 ? "bg-amber-500" : "bg-brand";
-  return (
-    <div className="grid grid-cols-[5.5rem_1fr_2.75rem] items-center gap-2 text-sm">
-      <span className={`truncate ${highlight ? "font-semibold" : ""}`}>{s.member_name}</span>
-      <span className="h-2.5 overflow-hidden rounded-full bg-soft" aria-hidden>
-        <span className={`block h-full rounded-full ${tone}`} style={{ width: `${Math.max(v, 4)}%` }} />
-      </span>
-      <span className="text-right tabular-nums text-muted">{v}%</span>
-    </div>
-  );
+type Colors = Record<string, string>;
+
+/** "Archie's All Day – welcoming Fitzroy brunch" → hook "Welcoming Fitzroy brunch". */
+function hookOf(headline: string, name: string) {
+  const rest = headline.startsWith(name) ? headline.slice(name.length).replace(/^\s*[–—:-]\s*/, "") : "";
+  return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : "";
 }
 
-function Thumb({ c }: { c: RankedCandidate }) {
-  return c.entity.image ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={c.entity.image} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
-  ) : (
-    <span className="grid size-16 shrink-0 place-items-center rounded-xl bg-soft text-2xl">
-      {TYPE_EMOJI[c.entity.type] ?? "✦"}
-    </span>
-  );
+const metaText = (meta?: string) => meta?.split(" · ").join(", ");
+
+function lowest(scores: MemberScore[]) {
+  return [...scores].sort((a, b) => a.satisfaction - b.satisfaction)[0];
 }
 
 function KnownFor({ c, n = 4 }: { c: RankedCandidate; n?: number }) {
   const tags = highlights(c.entity, n);
   if (!tags.length) return null;
   return (
-    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Known for">
+    <ul className="flex flex-wrap gap-1.5" aria-label="Known for">
       {tags.map((t) => (
-        <li key={t} className="rounded-full bg-soft px-2 py-0.5 text-xs text-muted">
+        <li key={t} className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">
           {t}
         </li>
       ))}
@@ -59,85 +49,169 @@ function NextStep({ c }: { c: RankedCandidate }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:bg-soft"
+      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-ink hover:opacity-90"
     >
-      {isPlace ? "📍 Open in Maps" : "▶ Where to watch"}
+      {isPlace ? "Open in Maps" : "Find where to watch"}
     </a>
   );
 }
 
-export default function Results({ decision }: { decision: Decision }) {
+/** One person's row in the fairness meter. */
+function MeterRow({
+  s,
+  color,
+  reason,
+  protectedRow,
+}: {
+  s: MemberScore;
+  color: string;
+  reason?: string;
+  protectedRow?: boolean;
+}) {
+  const v = Math.round(s.satisfaction * 100);
+  return (
+    <li className={`rounded-2xl px-3 py-2.5 ${protectedRow ? "bg-accent/15" : ""}`}>
+      <div className="flex items-center gap-3">
+        <Avatar name={s.member_name} color={color} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+              <span className="truncate">{s.member_name}</span>
+              {protectedRow && (
+                <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-ink">
+                  lowest match, protected
+                </span>
+              )}
+            </span>
+            <span className="font-display text-lg font-semibold tabular-nums">{v}%</span>
+          </div>
+          <div className="mt-1.5 h-2 rounded-full bg-soft" aria-hidden>
+            <div className="h-full rounded-full" style={{ width: `${Math.max(v, 3)}%`, background: color }} />
+          </div>
+        </div>
+      </div>
+      {reason && <p className="mt-1.5 pl-11 text-sm text-muted">{reason}</p>}
+    </li>
+  );
+}
+
+/** Compact per-member bars for runner-ups. */
+function MiniMeter({ scores, colors }: { scores: MemberScore[]; colors: Colors }) {
+  return (
+    <div className="flex h-7 items-end gap-1" role="img" aria-label={scores.map((s) => `${s.member_name} ${pct(s.satisfaction)}`).join(", ")}>
+      {scores.map((s) => (
+        <span
+          key={s.member_id}
+          title={`${s.member_name}: ${pct(s.satisfaction)}`}
+          className="w-2.5 rounded-sm"
+          style={{ height: `${4 + Math.round(s.satisfaction * 24)}px`, background: colors[s.member_id] ?? "var(--muted)" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function Results({ decision, colors }: { decision: Decision; colors: Colors }) {
   const byId = new Map(decision.ranked.map((r) => [r.entity.entity_id, r]));
   const picks = decision.picks.map((p) => ({ p, r: byId.get(p.entity_id) })).filter((x) => x.r) as {
     p: Decision["picks"][number];
     r: RankedCandidate;
   }[];
   const [top, ...rest] = picks;
-  const maj = decision.majority;
-  const differs = maj && top && maj.entity.entity_id !== top.r.entity.entity_id;
-
   if (!top) return null;
-  const minName = [...top.r.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0]?.member_name;
+
+  const maj = decision.majority;
+  const differs = !!maj && maj.entity.entity_id !== top.r.entity.entity_id;
+  const low = lowest(top.r.scores);
+  const majLow = maj ? lowest(maj.scores) : undefined;
+  const reasons = new Map(top.p.per_member.map((m) => [m.member_name, m.reason]));
+  const hook = hookOf(top.p.headline, top.r.entity.name);
+  const color = (id: string) => colors[id] ?? "var(--muted)";
 
   return (
-    <section className="space-y-4" aria-live="polite">
-      <p className="text-xs text-muted">
-        Taste match = how an option ranks within tonight&apos;s shortlist for each person&apos;s favourites, using Qloo&apos;s
-        audience-level affinities. It describes what people with similar tastes tend to like, not a prediction about any one person.
-        {decision.mode.qloo === "mock" && " Demo data: venues are fictional and location is not applied."}
-        {decision.mode.agent === "rules" && " Rules mode checks supported diet tags and dollar-sign budgets; review any other must-haves yourself."}
-      </p>
-      <article className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
-        <div className="bg-brand/10 px-5 py-2 text-xs font-medium uppercase tracking-wider text-brand">
-          Tonight&apos;s fair pick
-        </div>
-        {top.r.entity.image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={top.r.entity.image} alt="" className="h-48 w-full object-cover sm:h-56" />
+    <section className="space-y-5" aria-live="polite">
+      <article className="overflow-hidden rounded-3xl border border-line bg-card">
+        {top.r.entity.image ? (
+          <div className="h-52 overflow-hidden sm:h-64">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={top.r.entity.image} alt="" className="size-full scale-105 object-cover" />
+          </div>
+        ) : (
+          <div className="grid h-28 place-items-center bg-soft text-4xl" aria-hidden>
+            {TYPE_EMOJI[top.r.entity.type] ?? "✦"}
+          </div>
         )}
-        <div className="p-5">
-          <div className="flex gap-4">
-            {!top.r.entity.image && <Thumb c={top.r} />}
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold leading-tight">{top.p.headline}</h2>
-              {top.r.entity.meta && <p className="text-sm text-muted">{top.r.entity.meta}</p>}
-              <p className="mt-1 text-sm">{top.p.why_group}</p>
-              <KnownFor c={top.r} />
-              <NextStep c={top.r} />
-            </div>
+        <div className="space-y-3 p-5 sm:p-7">
+          <p className="text-sm font-semibold text-brand">Your fair pick</p>
+          <div>
+            <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+              {top.r.entity.name}
+            </h2>
+            {(hook || top.r.entity.meta) && (
+              <p className="mt-1 text-muted">{[hook, metaText(top.r.entity.meta)].filter(Boolean).join(". ")}</p>
+            )}
           </div>
-          <div className="mt-5 space-y-2">
+          <p className="max-w-prose">{top.p.why_group}</p>
+          <KnownFor c={top.r} />
+          <div className="pt-1">
+            <NextStep c={top.r} />
+          </div>
+        </div>
+
+        <div className="border-t border-line p-3 sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 px-3 pb-1">
+            <h3 className="font-display font-semibold">How well it fits each of you</h3>
+            <details className="relative text-sm">
+              <summary className="cursor-pointer list-none text-muted underline decoration-dotted underline-offset-4">
+                What is a taste match?
+              </summary>
+              <p className="absolute right-0 z-10 mt-2 w-72 max-w-[80vw] rounded-xl border border-line bg-card p-3 text-xs text-muted shadow-lg">
+                Where this option ranks among tonight&apos;s shortlist when Qloo scores it against that person&apos;s
+                favourites. Qloo describes what people with similar tastes tend to like; it is not a prediction about
+                any one person.
+                {decision.mode.qloo === "mock" && " This huddle uses the offline demo catalogue (fictional venues)."}
+              </p>
+            </details>
+          </div>
+          <ul className="space-y-1">
             {top.r.scores.map((s) => (
-              <Bar key={s.member_id} s={s} highlight={s.member_name === minName} />
-            ))}
-          </div>
-          <ul className="mt-5 space-y-2 text-sm">
-            {top.p.per_member.map((m) => (
-              <li key={m.member_name}>
-                <span className="font-medium">{m.member_name}:</span> <span className="text-muted">{m.reason}</span>
-              </li>
+              <MeterRow
+                key={s.member_id}
+                s={s}
+                color={color(s.member_id)}
+                reason={reasons.get(s.member_name)}
+                protectedRow={top.r.scores.length > 1 && s.member_id === low?.member_id}
+              />
             ))}
           </ul>
         </div>
       </article>
 
-      {decision.tradeoff_note && (
-        <div className="rounded-2xl border border-line bg-card p-5">
-          <p className="text-sm font-medium">Why not just take the average?</p>
-          <p className="mt-1 text-sm text-muted">{decision.tradeoff_note}</p>
-          {differs && maj && (
-            <div className="mt-4 grid grid-cols-2 gap-3 text-center text-sm">
-              <div className="rounded-xl bg-soft p-3">
-                <p className="text-xs text-muted">Simple average</p>
-                <p className="mt-0.5 truncate font-medium">{maj.entity.name}</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">{pct(maj.min_satisfaction)}</p>
-                <p className="text-xs text-muted">lowest taste match</p>
+      {maj && (
+        <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
+          <h3 className="font-display text-lg font-semibold">
+            {differs ? "Why not just take the average?" : "The simple average agrees"}
+          </h3>
+          {decision.tradeoff_note && <p className="mt-1 max-w-prose text-muted">{decision.tradeoff_note}</p>}
+          {differs && majLow && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-soft p-4">
+                <p className="text-sm text-muted">A simple average would pick</p>
+                <p className="mt-0.5 truncate font-semibold">{maj.entity.name}</p>
+                <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <Avatar name={majLow.member_name} color={color(majLow.member_id)} size="sm" />
+                  {majLow.member_name} drops to
+                  <b className="font-display text-xl tabular-nums">{pct(majLow.satisfaction)}</b>
+                </p>
               </div>
-              <div className="rounded-xl bg-accent/15 p-3">
-                <p className="text-xs text-muted">TasteBridge</p>
-                <p className="mt-0.5 truncate font-medium">{top.r.entity.name}</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">{pct(top.r.min_satisfaction)}</p>
-                <p className="text-xs text-muted">lowest taste match</p>
+              <div className="rounded-2xl bg-accent/15 p-4">
+                <p className="text-sm text-muted">TasteBridge picks</p>
+                <p className="mt-0.5 truncate font-semibold">{top.r.entity.name}</p>
+                <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <Avatar name={low.member_name} color={color(low.member_id)} size="sm" />
+                  nobody below
+                  <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
+                </p>
               </div>
             </div>
           )}
@@ -145,61 +219,78 @@ export default function Results({ decision }: { decision: Decision }) {
       )}
 
       {rest.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {rest.map(({ p, r }) => (
-            <article key={p.entity_id} className="rounded-2xl border border-line bg-card p-4">
-              <p className="text-xs text-muted">Runner-up · lowest match {pct(r.min_satisfaction)}</p>
-              <h3 className="mt-0.5 font-medium leading-snug">{p.headline}</h3>
-              {r.entity.meta && <p className="text-xs text-muted">{r.entity.meta}</p>}
-              <KnownFor c={r} n={3} />
-              <p className="mt-1 text-sm text-muted">{p.why_group}</p>
-              <div className="mt-3 space-y-1.5">
-                {r.scores.map((s) => (
-                  <Bar key={s.member_id} s={s} />
-                ))}
-              </div>
-            </article>
-          ))}
+        <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
+          <h3 className="font-display text-lg font-semibold">Also worth a look</h3>
+          <ul className="mt-2 divide-y divide-line">
+            {rest.map(({ p, r }) => (
+              <li key={p.entity_id} className="flex gap-4 py-3.5">
+                {r.entity.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.entity.image} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <span className="grid size-16 shrink-0 place-items-center rounded-xl bg-soft text-2xl" aria-hidden>
+                    {TYPE_EMOJI[r.entity.type] ?? "✦"}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{r.entity.name}</p>
+                      {r.entity.meta && <p className="text-sm text-muted">{metaText(r.entity.meta)}</p>}
+                    </div>
+                    <MiniMeter scores={r.scores} colors={colors} />
+                  </div>
+                  <p className="mt-1 text-sm text-muted">{p.why_group}</p>
+                  <p className="mt-1 text-xs text-muted">Lowest match {pct(r.min_satisfaction)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
-      <details id="how" className="rounded-2xl border border-line bg-card p-4 text-sm">
-        <summary className="cursor-pointer font-medium">How the agent decided</summary>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted">
+      <details id="how" className="rounded-3xl border border-line bg-card p-5 text-sm sm:px-6">
+        <summary className="cursor-pointer font-display text-base font-semibold">How the agent decided</summary>
+        <ol className="mt-3 space-y-2">
           {decision.trace.map((t, i) => (
-            <li key={i}>
-              <code className="rounded bg-soft px-1 text-xs text-foreground">{t.tool}</code> {t.summary}
+            <li key={i} className="flex gap-3">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-semibold">
+                {i + 1}
+              </span>
+              <span className="text-muted">
+                <code className="mr-1 rounded bg-soft px-1 text-xs text-foreground">{t.tool}</code>
+                {t.summary}
+              </span>
             </li>
           ))}
         </ol>
         <p className="mt-3 text-xs text-muted">
-          Each person&apos;s taste match is the option&apos;s percentile within tonight&apos;s shortlist when Qloo scores
-          it against that person&apos;s favourites. The pick maximises the lowest match (Nash welfare breaks ties).
-          Explanations: {decision.mode.agent === "claude" ? "Claude agent, limited to tool output" : "rules"}.
+          The pick maximises the lowest taste match in the group; Nash welfare breaks ties. Explanations:{" "}
+          {decision.mode.agent === "claude" ? "Claude, limited to what the tools returned" : "rule-based"}.
         </p>
       </details>
 
       {decision.qloo_calls && decision.qloo_calls.length > 0 && (
-        <details id="evidence" className="rounded-2xl border border-line bg-card p-4 text-sm">
-          <summary className="cursor-pointer font-medium">
+        <details id="evidence" className="rounded-3xl border border-line bg-card p-5 text-sm sm:px-6">
+          <summary className="cursor-pointer font-display text-base font-semibold">
             Qloo evidence{" "}
-            <span className="font-normal text-muted">
-              ({decision.qloo_calls.length} request{decision.qloo_calls.length === 1 ? "" : "s"} ·{" "}
+            <span className="font-sans text-sm font-normal text-muted">
+              ({decision.qloo_calls.length} request{decision.qloo_calls.length === 1 ? "" : "s"},{" "}
               {decision.mode.qloo === "live" ? "live Qloo API" : "offline demo catalogue, not Qloo data"})
             </span>
           </summary>
           <p className="mt-2 text-xs text-muted">
-            Exact requests behind this result. Entity id lists are summarised; no names or personal data are sent to
-            Qloo, and the API key never leaves the server.
+            The exact requests behind this result. Entity id lists are summarised; no names or personal data are sent
+            to Qloo, and the API key never leaves the server.
           </p>
           <ol className="mt-3 space-y-3">
             {decision.qloo_calls.map((c, i) => (
-              <li key={i} className="rounded-xl bg-soft p-3">
+              <li key={i} className="rounded-2xl bg-soft p-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <code className="font-semibold text-foreground">GET {c.endpoint}</code>
                   <span className="rounded-full border border-line px-1.5 text-muted">{c.source}</span>
                   <span className="text-muted">
-                    → {c.results} result{c.results === 1 ? "" : "s"} · {c.ms} ms
+                    {c.results} result{c.results === 1 ? "" : "s"} in {c.ms} ms
                   </span>
                 </div>
                 <dl className="mt-1.5 grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 gap-y-0.5 text-xs">

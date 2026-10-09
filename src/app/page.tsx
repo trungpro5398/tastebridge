@@ -1,124 +1,136 @@
+import Avatar from "@/components/Avatar";
+import { memberColor } from "@/lib/members";
 import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
+const example = [
+  { name: "Mai", v: 79, why: "Amélie, Norah Jones" },
+  { name: "Josh", v: 68, why: "John Wick, Mad Max" },
+  { name: "Priya", v: 100, why: "The Bear, Salt Fat Acid Heat" },
+  { name: "Leo", v: 74, why: "Severance, Radiohead" },
+];
+
 const steps = [
-  { n: "1", title: "Start a huddle", body: "Dinner spot, movie or show. Add must-haves like “one vegetarian, under $$$”." },
-  { n: "2", title: "Everyone adds 3 favourites", body: "Films, artists, shows, books: anything. Qloo connects taste across domains." },
-  { n: "3", title: "Get one fair pick", body: "The agent protects whoever has the lowest taste match and shows the evidence." },
+  {
+    title: "Start a huddle and share the link",
+    body: "Dinner spot, movie or TV show. Add must-haves like “one vegetarian, under $$$”.",
+  },
+  {
+    title: "Everyone adds three favourites",
+    body: "A film, a show, an artist, a book. Qloo’s taste graph connects them to restaurants and titles.",
+  },
+  {
+    title: "Get one pick that leaves nobody behind",
+    body: "The agent scores every option for every person, then picks the one with the best lowest match.",
+  },
 ];
 
 const why = [
   {
-    icon: "⚖️",
-    title: "Fair by design",
-    body: "Picks the option that lifts the lowest taste match in the group, then shows what a simple average would have done.",
+    title: "Fair, not loudest",
+    body: "Averages hide the person who hates the choice. TasteBridge lifts the lowest match first and shows what the average would have done.",
   },
   {
-    icon: "🔍",
     title: "Shows its working",
-    body: "Every score comes from Qloo, with the exact requests and the favourite that drove each match. No made-up numbers.",
+    body: "Each score comes from Qloo, with the favourite that drove it and the exact requests made. Claude writes the words, never the numbers.",
   },
   {
-    icon: "🎧",
-    title: "Taste, not surveys",
-    body: "Love Spirited Away and Norah Jones? Qloo turns that into a dinner match. No questionnaires, no cuisine checkboxes.",
+    title: "Taste, not questionnaires",
+    body: "Nobody fills in cuisine checkboxes. Loving Spirited Away and Norah Jones is enough to place you.",
   },
-];
-
-const preview = [
-  { name: "Mai", v: 69, why: "Norah Jones, Spirited Away" },
-  { name: "Josh", v: 46, why: "Daft Punk" },
-  { name: "Priya", v: 77, why: "Salt Fat Acid Heat" },
-  { name: "Leo", v: 100, why: "Radiohead" },
 ];
 
 export default function Home() {
   return (
-    <div className="space-y-16 pt-8 sm:pt-14">
-      <section className="grid items-center gap-10 sm:grid-cols-[1.1fr_1fr]">
+    <div className="space-y-20 pt-10 sm:pt-16">
+      <section className="grid items-center gap-10 sm:grid-cols-[1.15fr_1fr]">
         <div>
-          <p className="text-sm font-medium text-brand">For friends, couples and families</p>
-          <h1 className="mt-2 text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
-            Stop arguing about where to eat.
+          <h1 className="font-display text-5xl font-semibold leading-[0.98] tracking-tight sm:text-6xl">
+            Four friends, four tastes, one fair pick.
           </h1>
-          <p className="mt-4 text-lg text-muted">
-            Everyone adds three favourite films, shows or artists. TasteBridge&apos;s agent asks Qloo&apos;s taste graph
-            what the <em>whole</em> group will like, and picks the option that leaves nobody behind.
+          <p className="mt-5 max-w-md text-lg text-muted">
+            Everyone adds three favourite films, shows or artists. An agent asks Qloo&apos;s taste graph what the whole
+            group will like, and picks the dinner spot or movie that leaves nobody behind.
           </p>
-          <div className="mt-6 flex flex-wrap items-start gap-3">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <DemoButton />
-            <a href="#start" className="rounded-xl border border-line px-5 py-3 font-medium hover:bg-soft">
+            <a href="#start" className="rounded-xl px-4 py-3 font-medium text-brand hover:bg-soft">
               Start your own
             </a>
           </div>
         </div>
 
-        <div aria-hidden className="rotate-1 rounded-2xl border border-line bg-card shadow-lg">
-          <div className="flex justify-between rounded-t-2xl bg-brand/10 px-5 py-2 text-xs font-medium uppercase tracking-wider text-brand">
-            <span>Tonight&apos;s fair pick</span>
-            <span className="text-muted normal-case tracking-normal">Example</span>
-          </div>
-          <div className="p-5">
-            <p className="text-lg font-semibold">The Green Fig</p>
-            <p className="text-sm text-muted">Fitzroy · $$ · everyone ≥ 46%</p>
-            <div className="mt-4 space-y-2.5">
-              {preview.map((p) => (
-                <div key={p.name}>
+        <figure className="rounded-3xl border border-line bg-card p-5 shadow-[0_24px_60px_-30px_rgba(91,42,134,0.45)]">
+          <figcaption className="flex items-baseline justify-between">
+            <span className="text-sm font-semibold text-brand">Example fair pick</span>
+            <span className="text-xs text-muted">live Qloo data, Melbourne</span>
+          </figcaption>
+          <p className="mt-2 font-display text-2xl font-semibold">Archie&apos;s All Day</p>
+          <p className="text-sm text-muted">Fitzroy, $$. Brunch, welcoming.</p>
+          <ul className="mt-4 space-y-2.5">
+            {example.map((p, i) => (
+              <li key={p.name} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${p.name === "Josh" ? "bg-accent/15" : ""}`}>
+                <Avatar name={p.name} color={memberColor(i)} size="sm" />
+                <div className="min-w-0 flex-1">
                   <div className="flex justify-between text-sm">
-                    <span>{p.name}</span>
-                    <span className="tabular-nums text-muted">{p.v}%</span>
+                    <span className="font-medium">{p.name}</span>
+                    <span className="tabular-nums">{p.v}%</span>
                   </div>
-                  <div className="mt-1 h-2 rounded-full bg-soft">
-                    <div
-                      className={`h-full rounded-full ${p.v >= 70 ? "bg-accent" : "bg-amber-500"}`}
-                      style={{ width: `${p.v}%` }}
-                    />
+                  <div className="mt-1 h-1.5 rounded-full bg-soft">
+                    <div className="h-full rounded-full" style={{ width: `${p.v}%`, background: memberColor(i) }} />
                   </div>
-                  <p className="mt-0.5 text-xs text-muted">driven by {p.why}</p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 rounded-xl bg-soft p-3 text-xs text-muted">
-              A simple average would pick the Board Game Pantry, but Josh&apos;s match there drops to 39%.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-3">
-        {why.map((w) => (
-          <div key={w.title} className="rounded-2xl border border-line bg-card p-5">
-            <p className="text-2xl">{w.icon}</p>
-            <p className="mt-2 font-medium">{w.title}</p>
-            <p className="mt-1 text-sm text-muted">{w.body}</p>
-          </div>
-        ))}
-      </section>
-
-      <section id="start" className="scroll-mt-6">
-        <h2 className="text-2xl font-semibold tracking-tight">Start a huddle</h2>
-        <div className="mt-5 grid items-start gap-6 sm:grid-cols-[1.2fr_1fr]">
-          <CreateHuddle />
-          <ol className="space-y-4">
-            {steps.map((s) => (
-              <li key={s.n} className="flex gap-3">
-                <span className="mt-0.5 inline-grid size-7 shrink-0 place-items-center rounded-full bg-soft text-sm font-semibold">
-                  {s.n}
-                </span>
-                <div>
-                  <p className="font-medium">{s.title}</p>
-                  <p className="text-sm text-muted">{s.body}</p>
                 </div>
               </li>
             ))}
-          </ol>
+          </ul>
+          <p className="mt-4 text-sm text-muted">
+            A simple average would choose Chotto Motto, where Josh drops to 58%. TasteBridge keeps everyone at 68% or
+            more.
+          </p>
+        </figure>
+      </section>
+
+      <section id="how" className="scroll-mt-6">
+        <h2 className="font-display text-3xl font-semibold tracking-tight">How it works</h2>
+        <ol className="mt-6 grid gap-6 sm:grid-cols-3">
+          {steps.map((s, i) => (
+            <li key={s.title}>
+              <span className="font-display text-4xl font-semibold text-brand">{i + 1}</span>
+              <p className="mt-2 font-semibold">{s.title}</p>
+              <p className="mt-1 text-sm text-muted">{s.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="rounded-3xl bg-brand p-6 text-brand-ink sm:p-10">
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Why groups trust the pick</h2>
+        <dl className="mt-6 grid gap-6 sm:grid-cols-3">
+          {why.map((w) => (
+            <div key={w.title}>
+              <dt className="font-semibold">{w.title}</dt>
+              <dd className="mt-1 text-sm opacity-80">{w.body}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section id="start" className="scroll-mt-6">
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Start a huddle</h2>
+        <p className="mt-1 text-muted">Takes ten seconds. You&apos;ll get a link and a QR code to share.</p>
+        <div className="mt-6 max-w-xl">
+          <CreateHuddle />
         </div>
       </section>
 
-      <footer className="border-t border-line pt-6 text-xs text-muted">
+      <footer className="border-t border-line pt-6 text-sm text-muted">
         Taste matches use Qloo&apos;s audience-level affinities: they describe what people with similar tastes tend to
-        like, not a prediction about any one person. No personal data is sent to Qloo.{" "}
-        <a className="underline" href="https://github.com/trungpro5398/tastebridge">Source on GitHub</a> · MIT
+        like, not a prediction about any one person. No personal data is sent to Qloo. Built for the Qloo Agentic
+        Hackathon.{" "}
+        <a className="underline" href="https://github.com/trungpro5398/tastebridge">
+          Source on GitHub
+        </a>
+        , MIT licence.
       </footer>
     </div>
   );

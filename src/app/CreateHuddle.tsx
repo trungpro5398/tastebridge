@@ -37,7 +37,7 @@ export default function CreateHuddle() {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-card p-5 shadow-sm">
+    <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
       <form action={submit} className="space-y-4">
         <div>
           <label className="text-sm font-medium" htmlFor="title">
@@ -94,10 +94,10 @@ export default function CreateHuddle() {
             className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
           />
         </div>
-        {error && <p className="text-sm text-brand">{error}</p>}
+        {error && <p className="rounded-xl bg-accent/20 px-3 py-2 text-sm">{error}</p>}
         <button
           disabled={!!busy}
-          className="w-full rounded-xl bg-brand px-4 py-3 font-medium text-brand-ink transition hover:opacity-90 disabled:opacity-60"
+          className="w-full rounded-xl bg-brand px-4 py-3 font-semibold text-brand-ink transition hover:opacity-90 disabled:opacity-60"
         >
           {busy === "create" ? "Creating…" : "Start a huddle"}
         </button>

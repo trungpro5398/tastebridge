@@ -15,8 +15,8 @@ export default function Image() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 72,
-          background: "#fbf7f2",
-          color: "#1f1a17",
+          background: "#f7f7fa",
+          color: "#221a2e",
           fontFamily: "sans-serif",
         }}
       >
@@ -26,7 +26,7 @@ export default function Image() {
               width: 72,
               height: 72,
               borderRadius: 20,
-              background: "#e2553a",
+              background: "#5b2a86",
               color: "#fff",
               display: "flex",
               alignItems: "center",
@@ -39,24 +39,24 @@ export default function Image() {
           TasteBridge
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 80, fontWeight: 700, lineHeight: 1.05 }}>Stop arguing about where to eat.</div>
-          <div style={{ fontSize: 34, color: "#6f655d" }}>
+          <div style={{ fontSize: 80, fontWeight: 700, lineHeight: 1.05 }}>Four friends, four tastes, one fair pick.</div>
+          <div style={{ fontSize: 34, color: "#6b6477" }}>
             One fair pick for the whole group, with the Qloo evidence behind it.
           </div>
         </div>
         <div style={{ display: "flex", gap: 16 }}>
           {[
-            ["Mai", 69, "#d97706"],
-            ["Josh", 46, "#d97706"],
-            ["Priya", 77, "#2f6f5e"],
-            ["Leo", 100, "#2f6f5e"],
+            ["Mai", 79, "#e4572e"],
+            ["Josh", 68, "#2e86ab"],
+            ["Priya", 100, "#7a9e3b"],
+            ["Leo", 74, "#c2408f"],
           ].map(([n, v, c]) => (
             <div key={n as string} style={{ display: "flex", flexDirection: "column", gap: 8, width: 240 }}>
               <div style={{ fontSize: 26, display: "flex", justifyContent: "space-between" }}>
                 <span>{n}</span>
-                <span style={{ color: "#6f655d" }}>{v}%</span>
+                <span style={{ color: "#6b6477" }}>{v}%</span>
               </div>
-              <div style={{ height: 14, borderRadius: 7, background: "#f0e6da", display: "flex" }}>
+              <div style={{ height: 14, borderRadius: 7, background: "#ece8f2", display: "flex" }}>
                 <div style={{ width: `${v}%`, height: 14, borderRadius: 7, background: c as string }} />
               </div>
             </div>

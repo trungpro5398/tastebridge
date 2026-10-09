@@ -22,8 +22,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 72,
-          background: "#fbf7f2",
-          color: "#1f1a17",
+          background: "#f7f7fa",
+          color: "#221a2e",
           fontFamily: "sans-serif",
         }}
       >
@@ -33,7 +33,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
               width: 60,
               height: 60,
               borderRadius: 16,
-              background: "#e2553a",
+              background: "#5b2a86",
               color: "#fff",
               display: "flex",
               alignItems: "center",
@@ -45,11 +45,11 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           TasteBridge
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ fontSize: 36, color: "#e2553a" }}>{huddle?.title ?? "Group huddle"}</div>
+          <div style={{ fontSize: 36, color: "#5b2a86" }}>{huddle?.title ?? "Group huddle"}</div>
           <div style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.05 }}>
             {pick ? pick.headline : "Add your 3 favourites so we can decide"}
           </div>
-          <div style={{ fontSize: 30, color: "#6f655d" }}>
+          <div style={{ fontSize: 30, color: "#6b6477" }}>
             {top
               ? `Everyone's taste match is ${Math.round(top.min_satisfaction * 100)}% or higher`
               : names
@@ -57,7 +57,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 : "Films, shows, artists or books. Takes 30 seconds."}
           </div>
         </div>
-        <div style={{ fontSize: 26, color: "#6f655d" }}>Fair group picks, powered by Qloo × Claude</div>
+        <div style={{ fontSize: 26, color: "#6b6477" }}>Fair group picks, powered by Qloo × Claude</div>
       </div>
     ),
     size,

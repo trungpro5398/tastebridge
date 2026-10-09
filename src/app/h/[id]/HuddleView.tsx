@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import FavouritePicker, { typeLabel } from "@/components/FavouritePicker";
 import InvitePanel from "@/components/InvitePanel";
+import Avatar from "@/components/Avatar";
 import Results from "@/components/Results";
+import { memberColor } from "@/lib/members";
 import type { Decision, Entity, Huddle } from "@/lib/types";
 
 const KIND_LABEL = { place: "Dinner spot", movie: "Movie", tv_show: "TV show" } as const;
 type Step = { tool: string; summary: string };
 const STEP_LABEL: Record<string, string> = {
-  agent: "Agent",
+  agent: "Planning",
   find_tags: "Matching must-haves to Qloo tags",
   group_candidates: "Building a shortlist from everyone's taste",
   score_for_members: "Scoring the shortlist for each person",
@@ -171,69 +173,89 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   }
 
   const canDecide = huddle.members.length >= 2;
+  const colors = Object.fromEntries(huddle.members.map((m, i) => [m.id, memberColor(i)]));
+  const stage = huddle.result ? 3 : canDecide ? 2 : 1;
 
   const decisionSection = (
     <>
       {deciding ? (
-        <div className="rounded-2xl border border-line bg-card p-5" role="status" aria-live="polite">
-          <p className="text-sm font-medium">Finding your fair pick…</p>
-          <ol className="mt-3 space-y-2.5">
+        <div className="rounded-3xl border border-line bg-card p-5 sm:p-6" role="status" aria-live="polite">
+          <p className="font-display text-lg font-semibold">Finding your fair pick</p>
+          <p className="text-sm text-muted">The agent is asking Qloo about everyone&apos;s taste. About 20 seconds.</p>
+          <ol className="mt-4 space-y-3">
             {steps.map((st, i) => (
-              <li key={i} className="flex gap-2.5 text-sm">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent/15 text-xs text-accent">
+              <li key={i} className="flex gap-3 text-sm">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-brand-ink">
                   ✓
                 </span>
                 <span className="min-w-0">
                   <span className="block font-medium">{STEP_LABEL[st.tool] ?? st.tool}</span>
-                  <span className="block break-words text-xs text-muted">{st.summary}</span>
+                  <span className="block break-words text-muted">{st.summary}</span>
                 </span>
               </li>
             ))}
-            <li className="flex items-center gap-2.5 text-sm text-muted">
+            <li className="flex items-center gap-3 text-sm text-muted">
               <span className="size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand" />
-              {steps.length === 0 ? "Reading everyone's favourites" : "Working"}
+              {steps.length === 0 ? "Reading everyone's favourites" : "Working on the next step"}
             </li>
           </ol>
         </div>
       ) : !huddle.result && huddle.deciding ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-line bg-card p-5 text-sm" role="status">
+        <div className="flex items-center gap-3 rounded-3xl border border-line bg-card p-5 text-sm" role="status">
           <span className="size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand" />
           Someone in your group is finding the pick. This page updates by itself.
         </div>
-      ) : !huddle.result ? (
-        <button
-          onClick={() => decide()}
-          disabled={!canDecide}
-          className="w-full rounded-2xl bg-brand px-4 py-4 text-lg font-medium text-brand-ink shadow-sm transition hover:opacity-90 disabled:opacity-40"
-        >
-          {canDecide ? "Find our fair pick" : "Waiting for at least 2 people"}
-        </button>
+      ) : !huddle.result && canDecide ? (
+        <div className="rounded-3xl bg-brand p-5 text-brand-ink sm:p-6">
+          <p className="font-display text-xl font-semibold">
+            {huddle.members.length} people are in. Ready when you are.
+          </p>
+          <p className="mt-1 text-sm opacity-80">Friends can still join later; the pick updates when they do.</p>
+          <button
+            onClick={() => decide()}
+            className="mt-4 w-full rounded-2xl bg-card px-4 py-3.5 font-display text-lg font-semibold text-brand hover:opacity-95 sm:w-auto sm:px-8"
+          >
+            Find our fair pick
+          </button>
+        </div>
+      ) : !huddle.result && huddle.members.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-3xl border border-dashed border-line p-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted">
+            You need at least 2 people for a group pick. Invite someone to add their favourites.
+          </p>
+          <button
+            onClick={() => setShowInvite(true)}
+            className="shrink-0 rounded-xl border border-line bg-card px-4 py-2 text-sm font-medium hover:bg-soft"
+          >
+            Invite friends
+          </button>
+        </div>
       ) : null}
 
       {huddle.result && !deciding && (
         <div ref={resultRef} className="scroll-mt-4 space-y-4">
-          <Results decision={huddle.result} />
-          <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-sm">
+          <Results decision={huddle.result} colors={colors} />
+          <div className="flex flex-col gap-4 rounded-3xl border border-line bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               {voted ? (
-                <span className="text-muted">Thanks! That helps us improve.</span>
+                <span className="text-muted">Thanks, noted.</span>
               ) : (
                 <>
-                  <span>Did this work for your group?</span>
-                  <button onClick={() => vote("up")} aria-label="Yes" className="rounded-lg border border-line px-2.5 py-1 hover:bg-soft">
-                    👍
+                  <span className="mr-1">Did this work for your group?</span>
+                  <button onClick={() => vote("up")} className="rounded-lg border border-line px-3 py-1.5 hover:bg-soft">
+                    Yes
                   </button>
-                  <button onClick={() => vote("down")} aria-label="No" className="rounded-lg border border-line px-2.5 py-1 hover:bg-soft">
-                    👎
+                  <button onClick={() => vote("down")} className="rounded-lg border border-line px-3 py-1.5 hover:bg-soft">
+                    Not really
                   </button>
                 </>
               )}
             </div>
             <div className="flex gap-2">
-              <button onClick={shareResult} className="rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background">
-                {copied ? "Copied ✓" : "Send to the group"}
+              <button onClick={shareResult} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+                {copied ? "Link copied" : "Share the pick"}
               </button>
-              <button onClick={() => decide(true)} className="rounded-xl border border-line px-3 py-2 text-sm hover:bg-soft">
+              <button onClick={() => decide(true)} className="rounded-xl border border-line px-4 py-2 text-sm hover:bg-soft">
                 Run again
               </button>
             </div>
@@ -244,23 +266,31 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   );
 
   const membersSection = (
-    <section className="rounded-2xl border border-line bg-card p-5">
-      <h2 className="text-sm font-medium">
-        Who&apos;s in <span className="text-muted">({huddle.members.length})</span>
-      </h2>
+    <section className="rounded-3xl border border-line bg-card p-5 sm:p-6">
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-display text-lg font-semibold">Who&apos;s in</h2>
+        <span className="text-sm text-muted">{huddle.members.length} of 8</span>
+      </div>
       {huddle.members.length === 0 && (
-        <p className="mt-2 text-sm text-muted">Nobody yet. Add yourself, then send the link to your group.</p>
+        <p className="mt-2 text-sm text-muted">Nobody yet. Add your taste below, then invite your group.</p>
       )}
       <ul className="mt-3 space-y-3">
         {huddle.members.map((m) => (
-          <li key={m.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="font-medium">
-              {m.name}
-              {m.id === joinedAs && <span className="ml-1 text-xs text-muted">(you)</span>}
-            </span>
-            <span className="text-sm text-muted">
-              {m.picks.map((p) => `${p.name} (${typeLabel(p.type)})`).join(" · ")}
-            </span>
+          <li key={m.id} className="flex gap-3">
+            <Avatar name={m.name} color={colors[m.id]} />
+            <div className="min-w-0">
+              <p className="font-medium">
+                {m.name}
+                {m.id === joinedAs && <span className="ml-1.5 text-sm font-normal text-muted">(you)</span>}
+              </p>
+              <ul className="mt-1 flex flex-wrap gap-1.5">
+                {m.picks.map((p) => (
+                  <li key={p.entity_id} className="max-w-full truncate rounded-full bg-soft px-2.5 py-0.5 text-xs">
+                    <span className="text-muted">{typeLabel(p.type)}</span> {p.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </li>
         ))}
       </ul>
@@ -275,24 +305,30 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
       )}
       {!joinedAs && huddle.members.length < 8 && (!huddle.result || showJoin) && (
         <div className="mt-5 border-t border-line pt-5">
-          <p className="text-sm font-medium">Add your taste</p>
+          <h3 className="font-display font-semibold">Add your taste</h3>
+          <p className="text-sm text-muted">Your first name and up to three favourites. No account needed.</p>
+          <label className="mt-3 block text-sm font-medium" htmlFor="member-name">
+            First name
+          </label>
           <input
+            id="member-name"
             aria-label="Your first name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your first name"
+            placeholder="e.g. Mai"
             maxLength={40}
-            className="mt-2 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
+            className="mt-1 w-full rounded-xl border border-line bg-background px-3 py-2.5 outline-none focus:border-brand"
           />
-          <div className="mt-3">
+          <p className="mt-3 text-sm font-medium">Favourites</p>
+          <div className="mt-1">
             <FavouritePicker value={picks} onChange={setPicks} />
           </div>
           <button
             onClick={join}
             disabled={joining || !name.trim() || picks.length === 0}
-            className="mt-4 w-full rounded-xl bg-foreground px-4 py-3 font-medium text-background disabled:opacity-40"
+            className="mt-4 w-full rounded-xl bg-brand px-4 py-3 font-semibold text-brand-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {joining ? "Adding…" : "I'm in"}
+            {joining ? "Adding…" : picks.length ? `Join with ${picks.length} favourite${picks.length > 1 ? "s" : ""}` : "Join"}
           </button>
         </div>
       )}
@@ -302,27 +338,47 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   return (
     <div className="space-y-6 pt-6">
       <section>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span className="rounded-full bg-soft px-2 py-0.5">{KIND_LABEL[huddle.kind]}</span>
-          {huddle.location && huddle.kind === "place" && <span>📍 {huddle.location}</span>}
-        </div>
-        <div className="mt-2 flex items-start justify-between gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">{huddle.title}</h1>
+        <p className="text-sm text-muted">
+          {KIND_LABEL[huddle.kind]}
+          {huddle.location && huddle.kind === "place" ? ` in ${huddle.location}` : ""}
+        </p>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight">{huddle.title}</h1>
           <button
             onClick={() => setShowInvite((v) => !v)}
             aria-expanded={showInvite}
-            className="shrink-0 rounded-xl border border-line px-3 py-2 text-sm hover:bg-soft"
+            className="mt-1 shrink-0 rounded-xl border border-line bg-card px-3.5 py-2 text-sm font-medium hover:bg-soft"
           >
             Invite friends
           </button>
         </div>
-        {huddle.notes && <p className="mt-1 text-sm text-muted">Must-haves: {huddle.notes}</p>}
+        {huddle.notes && (
+          <p className="mt-1 text-muted">
+            Must-haves: <span className="text-foreground">{huddle.notes}</span>
+          </p>
+        )}
+        <ol className="mt-5 grid grid-cols-3 gap-2 text-xs sm:text-sm" aria-label="Progress">
+          {["Add tastes", "Find the pick", "Go"].map((label, i) => {
+            const n = i + 1;
+            const done = stage > n;
+            const current = stage === n;
+            return (
+              <li key={label} aria-current={current ? "step" : undefined}>
+                <div className={`h-1.5 rounded-full ${done || current ? "bg-brand" : "bg-line"}`} />
+                <p className={`mt-1.5 ${current ? "font-semibold" : "text-muted"}`}>
+                  {label}
+                  {n === 1 && huddle.members.length > 0 ? ` (${huddle.members.length})` : ""}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       {showInvite && <InvitePanel title={huddle.title} onClose={() => setShowInvite(false)} />}
 
       {huddle.result || deciding ? decisionSection : membersSection}
-      {error && <p className="rounded-xl bg-brand/10 px-4 py-3 text-sm text-brand">{error}</p>}
+      {error && <p className="rounded-2xl bg-accent/20 px-4 py-3 text-sm">{error}</p>}
       {huddle.result || deciding ? membersSection : decisionSection}
     </div>
   );

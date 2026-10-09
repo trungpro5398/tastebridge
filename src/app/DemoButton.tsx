@@ -27,11 +27,11 @@ export default function DemoButton({ className = "" }: { className?: string }) {
       <button
         onClick={start}
         disabled={busy}
-        className={`rounded-xl bg-brand px-5 py-3 font-medium text-brand-ink shadow-sm transition hover:opacity-90 disabled:opacity-60 ${className}`}
+        className={`rounded-xl bg-brand px-5 py-3 font-semibold text-brand-ink transition hover:opacity-90 disabled:opacity-60 ${className}`}
       >
         {busy ? "Setting up 4 friends…" : "Try the 30-second demo"}
       </button>
-      {error && <p className="mt-2 text-sm text-brand">{error}</p>}
+      {error && <p className="mt-2 rounded-xl bg-accent/20 px-3 py-2 text-sm">{error}</p>}
     </div>
   );
 }
