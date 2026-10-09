@@ -18,6 +18,8 @@ Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
    - `score_for_members` re-scores **the same shortlist against each person's own favourites** (`/v2/insights` + `filter.results.entities` + `feature.explainability`).
    - It ranks options with a **fairness rule** (protect the least-happy person who has a preference tonight), runs `compare_tastes` on the two people who disagree most, re-plans once when the protected person is in their bottom half, and calls `finalize`. Each plan step carries a plain-English reason shown to the group. Finalization enforces the scorer's top-three order and rejects ambience claims the Qloo tags don't support.
 4. The result shows a taste-match bar per person (with the favourite behind it when one clearly stands out, and each person's own #1 of tonight's options), a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
+5. **Private "not tonight":** each person can quietly rule one thing out at join time (stored server-side only, never in public reads); it becomes a hard exclusion and the result never says who asked.
+6. **Fairness across outings:** "Plan the next outing" links a new huddle to this one; anyone who gave way (below 65%) earns a credit of half the gap (halved per older outing, capped at 15 points) in the next fair ranking (`carriedOver` in `src/lib/fairness.ts`).
 
 ### Talk back to the agent
 After a pick, the group can say "no Japanese, closer to the city", "somewhere quieter" or "surprise us". The agent maps that onto Qloo:
