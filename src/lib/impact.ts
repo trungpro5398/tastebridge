@@ -2,7 +2,7 @@ import "server-only";
 import { supabase } from "./store";
 import type { Decision, Huddle } from "./types";
 
-type Row = {
+export type Row = {
   kind: Huddle["kind"];
   is_demo: boolean;
   result: Decision | null;
@@ -36,7 +36,11 @@ export async function impactStats(): Promise<ImpactStats | null> {
     .order("created_at", { ascending: false })
     .limit(2000);
   if (error || !data) return null;
-  const rows = data as unknown as Row[];
+  return computeImpact(data as unknown as Row[]);
+}
+
+/** Pure aggregation, separated for testing. */
+export function computeImpact(rows: Row[]): ImpactStats {
   const real = rows.filter((r) => !r.is_demo);
   const decided = real.filter((r) => r.result?.ranked?.length);
   const diffs = decided.filter((r) => r.result!.majority && r.result!.majority.entity.entity_id !== r.result!.ranked[0].entity.entity_id);

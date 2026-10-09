@@ -67,6 +67,17 @@ The same flow works outside Melbourne. A New York dinner group (*Succession*, Be
 
 We reviewed the product by walking through it as a judge in New York, a friend opening the link on a phone, and the organiser after the result. The issues and fixes are in `docs/UX_REVIEW.md`.
 
+## Measuring whether it works for real groups
+Every result ends with three one-tap questions: did it work, were the percentages clear, and (once the evening has passed) did you actually go there.
+
+The **[Impact page](https://tastebridge-brown.vercel.app/impact)** shows live, anonymous numbers from real groups:
+- how often the fair pick differs from the average;
+- the lift for the least-matched person;
+- how often groups adjust with the agent;
+- the answer rates.
+
+These sit next to the controlled evaluation. Demo and test runs are excluded, so the live numbers start from zero and grow honestly.
+
 ## Challenges
 - **Comparable scores.** Affinity scales differ per person, and percentiles fixed that.
 - **Keeping the LLM honest.** The numbers come only from Qloo plus deterministic code. The model plans and explains, and finalisation rejects anything outside the scored ranking.

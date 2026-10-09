@@ -32,6 +32,14 @@ It then re-plans and explains what changed. Requests accumulate, and the rules f
 - A Leaflet/OpenStreetMap map of the shortlist.
 - A **taste compatibility** score: the mean pairwise correlation of members' ranks, plus "taste twins" and "furthest apart".
 
+### Measuring real outcomes
+After each result, people get three one-tap questions:
+1. Did it work for your group?
+2. Were the percentages clear?
+3. Once the evening has passed: did you go there?
+
+Answers are stored as append-only rows. **[/impact](https://tastebridge-brown.vercel.app/impact)** shows live, anonymous aggregates from real groups next to the live-Qloo evaluation. Demo and non-production runs are excluded via `huddles.is_demo`.
+
 ### API for platforms
 `POST /api/v1/fair-pick` returns one fair pick with per-member evidence. It is deterministic and uses no LLM. See [docs/API.md](docs/API.md).
 
