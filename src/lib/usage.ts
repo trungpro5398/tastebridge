@@ -49,3 +49,24 @@ export async function reserveAgentRun(ip: string): Promise<{ ok: boolean; reason
   const { error } = await supabase.from("agent_runs").insert({ ip_hash: ip });
   return error ? { ok: false, reason: "usage check unavailable" } : { ok: true };
 }
+
+// ---------- light per-instance limits for cheap public endpoints (search, demo, create) ----------
+const g2 = globalThis as unknown as { __hits?: Map<string, number[]> };
+const hits: Map<string, number[]> = (g2.__hits ??= new Map());
+
+/** Sliding-window counter per key (best effort: per server instance). */
+export function allow(key: string, limit: number, windowMs: number) {
+  const now = Date.now();
+  const recent = (hits.get(key) ?? []).filter((t) => t > now - windowMs);
+  if (recent.length >= limit) {
+    hits.set(key, recent);
+    return false;
+  }
+  recent.push(now);
+  hits.set(key, recent);
+  if (hits.size > 5000) for (const k of [...hits.keys()].slice(0, 1000)) hits.delete(k);
+  return true;
+}
+
+export const tooMany = (what: string) =>
+  Response.json({ error: `Too many ${what} from your network. Please wait a minute and try again.` }, { status: 429 });

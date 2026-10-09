@@ -1,5 +1,6 @@
 import { QlooError, qlooMode, searchEntities } from "@/lib/qloo";
 import { addMember, createHuddle, kvGet, kvSet } from "@/lib/store";
+import { allow, ipHash, tooMany } from "@/lib/usage";
 import type { Entity, EntityType } from "@/lib/types";
 
 const M: EntityType = "urn:entity:movie";
@@ -35,7 +36,8 @@ async function demoFriends(): Promise<Resolved> {
   return out;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!allow(`demo:${ipHash(request)}`, 15, 3_600_000)) return tooMany("demo huddles");
   let friends: Resolved;
   try {
     friends = await demoFriends();

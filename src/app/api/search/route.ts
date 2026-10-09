@@ -1,4 +1,5 @@
 import { searchEntities } from "@/lib/qloo";
+import { allow, ipHash, tooMany } from "@/lib/usage";
 import type { EntityType } from "@/lib/types";
 
 const ALLOWED = new Set<EntityType>([
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return Response.json([]);
+  if (!allow(`search:${ipHash(request)}`, 40, 60_000)) return tooMany("searches");
   const types = (url.searchParams.get("types") ?? "")
     .split(",")
     .filter((t): t is EntityType => ALLOWED.has(t as EntityType));

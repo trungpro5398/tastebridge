@@ -28,6 +28,7 @@ export default function FavouritePicker({
   const [results, setResults] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (q.trim().length < 2) return;
@@ -37,11 +38,20 @@ export default function FavouritePicker({
       const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`).catch(() => null);
       const data: Entity[] = res?.ok ? await res.json().catch(() => []) : [];
       if (!cancelled) {
+        setNotice(
+          res?.status === 429
+            ? "Lots of searches right now. Give it a few seconds."
+            : res && !res.ok
+              ? "Search is busy. Try again in a moment."
+              : !res
+                ? "You seem to be offline."
+                : "",
+        );
         setResults(data.filter((e) => !value.some((v) => v.entity_id === e.entity_id)));
         setActive(0);
         setLoading(false);
       }
-    }, 250);
+    }, 300);
     return () => {
       clearTimeout(t);
       cancelled = true;
@@ -109,7 +119,9 @@ export default function FavouritePicker({
             className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-line bg-card shadow-lg"
           >
             {loading && !results.length && <li className="px-3 py-2 text-sm text-muted">Searching…</li>}
-            {!loading && !results.length && <li className="px-3 py-2 text-sm text-muted">No matches yet</li>}
+            {!loading && !results.length && (
+              <li className="px-3 py-2 text-sm text-muted">{notice || "No matches yet. Try the full title or artist name."}</li>
+            )}
             {results.map((e, i) => (
               <li
                 key={e.entity_id}
