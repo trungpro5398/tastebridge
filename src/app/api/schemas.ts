@@ -11,9 +11,9 @@ export const EntityIn = z.object({
   entity_id: z.string().min(1).max(120),
   name: z.string().min(1).max(200),
   type: z.string().max(60),
-  image: z.string().url().max(500).optional(),
+  image: z.string().url().max(2000).optional(),
   meta: z.string().max(120).optional(),
-  tags: z.array(z.object({ id: z.string().max(120), name: z.string().max(80) })).max(12).optional(),
+  tags: z.array(z.object({ id: z.string().max(160), name: z.string().max(120) })).max(30).optional(),
 });
 
 export const JoinHuddle = z.object({

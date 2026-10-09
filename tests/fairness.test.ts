@@ -43,3 +43,15 @@ test("empty group or shortlist has no winner", () => {
   assert.deepEqual(rankFairly([], members, {}), { ranked: [], majority: null });
   assert.deepEqual(rankFairly([entity("x")], [], {}), { ranked: [], majority: null });
 });
+
+test("highlights keep meaningful Qloo tags and drop noise", async () => {
+  const { highlights } = await import("../src/lib/highlights");
+  const tags = [
+    { id: "urn:tag:age_range:qloo:25_29", name: "25 29" },
+    { id: "urn:tag:ambience:qloo:family_friendly", name: "Family friendly" },
+    { id: "urn:tag:payments:place:price_level", name: "Price level" },
+    { id: "urn:tag:menu_highlight:qloo:mushroom_burger", name: "Mushroom burger" },
+    { id: "urn:tag:cuisine:qloo:global_fusion", name: "Global fusion" },
+  ];
+  assert.deepEqual(highlights({ tags }), ["Mushroom burger", "Global fusion", "Family friendly"]);
+});

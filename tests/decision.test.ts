@@ -89,3 +89,15 @@ test("fair pick never leaves its least-matched member worse off than the mean-sc
     assert.ok(result.ranked[0].min_satisfaction >= result.majority.min_satisfaction, notes);
   }
 });
+
+test("join schema accepts a live Qloo search result with many tags and a long image URL", () => {
+  const pick = {
+    entity_id: "9B33A620-68CA-49B3-BFCF-F09CCF8AD595",
+    name: "Spirited Away",
+    type: "urn:entity:movie",
+    image: "https://images.qloo.com/i/" + "x".repeat(600) + ".jpg",
+    meta: "2001",
+    tags: Array.from({ length: 30 }, (_, i) => ({ id: `urn:tag:keyword:media:k${i}`, name: `Keyword ${i}` })),
+  };
+  assert.equal(JoinHuddle.safeParse({ name: "Mai", picks: [pick] }).success, true);
+});

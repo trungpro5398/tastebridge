@@ -1,3 +1,4 @@
+import { highlights } from "@/lib/highlights";
 import type { Decision, MemberScore, RankedCandidate } from "@/lib/types";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -29,6 +30,20 @@ function Thumb({ c }: { c: RankedCandidate }) {
     <span className="grid size-16 shrink-0 place-items-center rounded-xl bg-soft text-2xl">
       {TYPE_EMOJI[c.entity.type] ?? "✦"}
     </span>
+  );
+}
+
+function KnownFor({ c, n = 4 }: { c: RankedCandidate; n?: number }) {
+  const tags = highlights(c.entity, n);
+  if (!tags.length) return null;
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Known for">
+      {tags.map((t) => (
+        <li key={t} className="rounded-full bg-soft px-2 py-0.5 text-xs text-muted">
+          {t}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -87,6 +102,7 @@ export default function Results({ decision }: { decision: Decision }) {
               <h2 className="text-xl font-semibold leading-tight">{top.p.headline}</h2>
               {top.r.entity.meta && <p className="text-sm text-muted">{top.r.entity.meta}</p>}
               <p className="mt-1 text-sm">{top.p.why_group}</p>
+              <KnownFor c={top.r} />
               <NextStep c={top.r} />
             </div>
           </div>
@@ -135,6 +151,7 @@ export default function Results({ decision }: { decision: Decision }) {
               <p className="text-xs text-muted">Runner-up · lowest match {pct(r.min_satisfaction)}</p>
               <h3 className="mt-0.5 font-medium leading-snug">{p.headline}</h3>
               {r.entity.meta && <p className="text-xs text-muted">{r.entity.meta}</p>}
+              <KnownFor c={r} n={3} />
               <p className="mt-1 text-sm text-muted">{p.why_group}</p>
               <div className="mt-3 space-y-1.5">
                 {r.scores.map((s) => (

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import FavouritePicker, { typeLabel } from "@/components/FavouritePicker";
+import InvitePanel from "@/components/InvitePanel";
 import Results from "@/components/Results";
 import type { Decision, Entity, Huddle } from "@/lib/types";
 
@@ -39,6 +40,7 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   const [steps, setSteps] = useState<Step[]>([]);
   const [voted, setVoted] = useState<"up" | "down" | null>(null);
   const [showJoin, setShowJoin] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -74,7 +76,18 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     setError("");
     const res = await fetch(`/api/huddles/${huddle.id}/members`, {
       method: "POST",
-      body: JSON.stringify({ name: name.trim(), picks }),
+      // Send only what the decision needs (the search result carries more).
+      body: JSON.stringify({
+        name: name.trim(),
+        picks: picks.map(({ entity_id, name, type, image, meta, tags }) => ({
+          entity_id,
+          name,
+          type,
+          image,
+          meta,
+          tags: tags?.slice(0, 12),
+        })),
+      }),
     }).catch(() => null);
     const data = res ? await res.json().catch(() => ({})) : {};
     setJoining(false);
@@ -84,6 +97,8 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
     } catch {}
     setJustJoined(data.id);
     setPicks([]);
+    // First one in: the next step is getting friends here.
+    if (huddle.members.length < 2) setShowInvite(true);
     refresh();
   }
 
@@ -148,21 +163,6 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setError("Could not copy. Copy the address from your browser instead.");
-    }
-  }
-
-  async function share() {
-    const url = window.location.href;
-    if (navigator.share) {
-      await navigator.share({ title: huddle.title, text: "Add your favourites so we can decide:", url }).catch(() => {});
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        setError("Could not copy the link. Copy the address from your browser to invite friends.");
-      }
     }
   }
 
@@ -299,12 +299,18 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
         </div>
         <div className="mt-2 flex items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">{huddle.title}</h1>
-          <button onClick={share} className="shrink-0 rounded-xl border border-line px-3 py-2 text-sm hover:bg-soft">
-            {copied ? "Link copied ✓" : "Invite friends"}
+          <button
+            onClick={() => setShowInvite((v) => !v)}
+            aria-expanded={showInvite}
+            className="shrink-0 rounded-xl border border-line px-3 py-2 text-sm hover:bg-soft"
+          >
+            Invite friends
           </button>
         </div>
         {huddle.notes && <p className="mt-1 text-sm text-muted">Must-haves: {huddle.notes}</p>}
       </section>
+
+      {showInvite && <InvitePanel title={huddle.title} onClose={() => setShowInvite(false)} />}
 
       {huddle.result || deciding ? decisionSection : membersSection}
       {error && <p className="rounded-xl bg-brand/10 px-4 py-3 text-sm text-brand">{error}</p>}

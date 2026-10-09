@@ -143,7 +143,7 @@ function toEntity(r: Raw): Entity {
     image,
     description: (props.description as string) ?? undefined,
     tags: asArr(r.tags)
-      .slice(0, 12)
+      .slice(0, 30)
       .map((t) => ({ id: String(t.id ?? t.tag_id), name: String(t.name) })),
     meta,
     address: fullAddress,

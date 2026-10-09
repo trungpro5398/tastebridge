@@ -5,6 +5,7 @@
  */
 import "server-only";
 import { rankFairly } from "./fairness";
+import { highlights } from "./highlights";
 import { DINNER_TAG, compareTastes, findTags, insights, qlooMode } from "./qloo";
 import {
   KIND_TO_TYPE,
@@ -185,7 +186,7 @@ export class DecisionSession {
         entity_id: r.entity.entity_id,
         name: r.entity.name,
         meta: r.entity.meta,
-        tags: r.entity.tags?.slice(0, 6).map((t) => t.name),
+        known_for: highlights(r.entity, 5),
         lowest_taste_match: pct(r.min_satisfaction),
         average: pct(r.mean_satisfaction),
         per_member: r.scores.map((s) => ({
