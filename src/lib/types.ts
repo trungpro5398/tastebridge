@@ -139,6 +139,8 @@ export type Decision = {
   shortlist_size?: number;
   /** member_id -> name of that member's own top option on tonight's shortlist */
   personal_top?: Record<string, string>;
+  /** calm was requested and the pick has no calm-type tag: the best calm-tagged option within 10 points */
+  calm_alternative?: { name: string; tags: string[]; lowest_match: number };
   /** Claude tokens spent on this decision */
   agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };

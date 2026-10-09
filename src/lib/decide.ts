@@ -129,6 +129,14 @@ export class DecisionSession {
     return tags;
   }
 
+  /** When calm was asked for and the fair pick has no calm-type tag: the best calm-tagged option within 10 points. */
+  calmAlternative() {
+    const top = this.ranked[0];
+    if (!this.wantsCalm() || !top || calmTags(top.entity).length) return undefined;
+    const alt = this.ranked.find((r) => calmTags(r.entity).length && r.min_satisfaction >= top.min_satisfaction - 0.1);
+    return alt && { name: alt.entity.name, tags: calmTags(alt.entity), lowest_match: alt.min_satisfaction };
+  }
+
   /** The must-haves or follow-ups ask for a calm or quiet place. */
   wantsCalm() {
     return CALM_ASK.test([this.huddle.notes ?? "", ...this.refinements].join(" "));
@@ -137,6 +145,8 @@ export class DecisionSession {
   private lastTop: { id: string; name: string } | undefined;
   /** distinct shortlists built in this session (a re-plan makes it 2+) */
   shortlistsTried = 0;
+  /** a later shortlist leaned towards something (preference or area), i.e. a re-plan aimed at someone */
+  targetedReplan = false;
   /** set by the agent runner: finalize then insists on one re-plan when someone is left behind */
   requireReplan = false;
   private lastRequest = "";
@@ -236,6 +246,7 @@ export class DecisionSession {
     }
     this.shortlist = next;
     this.shortlistsTried += 1;
+    if (this.shortlistsTried > 1 && (opts.preferTags?.length || opts.area)) this.targetedReplan = true;
     const brought = this.shortlist.filter((e) => e.champion_of).length;
     this.location = location;
     this.filters = {
@@ -375,6 +386,7 @@ export class DecisionSession {
         const best = [...this.ranked].sort((a, b) => (mine(b)?.percentile ?? 0) - (mine(a)?.percentile ?? 0))[0];
         return { member: m.name, flexible_tonight: !!mine(this.ranked[0] ?? best)?.flexible, own_top_match: best?.entity.name };
       }),
+      ...(this.calmAlternative() ? { calm_request_note: { pick_has_no_calm_tag: true, closest_calm_option: this.calmAlternative() } } : {}),
       average_vote_would_pick: this.majority && {
         name: this.majority.entity.name,
         lowest_taste_match_among_those_who_care: pct(this.majority.min_satisfaction),
@@ -393,11 +405,15 @@ export class DecisionSession {
     const brief = [this.huddle.notes ?? "", ...this.refinements].join(" ").toLowerCase();
     const allTags = [...expected, ...(this.majority ? [this.majority] : [])].flatMap((c) => (c.entity.tags ?? []).map((t) => t.name));
     const notes = [tradeoffNote, changeNote, groupMessage].join(" ");
+    const said = [notes, ...picks.flatMap((p) => [p.headline, p.why_group, ...p.per_member.map((m) => m.reason)])].join(" ");
+    const predicts = said.match(/\b(loves?|adores?|hates?|will (love|enjoy|hate))\b/i);
+    if (predicts)
+      return `error: "${predicts[0]}" predicts how a person will feel. Qloo describes what fans of their favourites tend to like; say that instead.`;
     const badNotes = ungroundedAmbience(notes, allTags).filter((w) => !brief.includes(w));
     if (badNotes.length)
       return `error: the notes call something "${badNotes.join('", "')}", but no option's Qloo tags say so. Rewrite without that claim.`;
     const floor = expected[0].min_satisfaction;
-    if (this.requireReplan && floor < 0.5 && this.shortlistsTried < 2) {
+    if (this.requireReplan && floor < 0.5 && !this.targetedReplan) {
       const who = expected[0].scores.filter((x) => !x.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
       return `error: ${who?.member_name ?? "someone"} is at ${pct(floor)} on the fairest option. Re-plan once for them first (find_tags for something their favourites suggest, group_candidates with prefer_tag_ids and a reason naming them, then score_for_members), then finalize on whichever shortlist protects them better.`;
     }
@@ -434,6 +450,7 @@ export class DecisionSession {
       group_message: this.groupMessage || ruleMessage(this.huddle, this.ranked[0]),
       compatibility: groupCompatibility(this.ranked),
       shortlist_size: this.ranked.length,
+      calm_alternative: this.calmAlternative(),
       personal_top: Object.fromEntries(
         this.huddle.members.map((m) => {
           const best = [...this.ranked].sort(

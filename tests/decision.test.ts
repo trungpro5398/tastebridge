@@ -191,8 +191,21 @@ test("the agent can't finalize while someone with a preference is left behind an
   session.ranked[0].min_satisfaction = 0.4; // someone with a preference is left behind
   const picks = session.toDecision("rules").picks;
   assert.match(session.finalize(picks, "t"), /Re-plan once/);
+  // a different budget alone is not a re-plan aimed at anyone
   await session.generateCandidates({ priceMax: 3 });
   await session.scoreMembers();
   session.ranked[0].min_satisfaction = 0.4;
+  assert.match(session.finalize(session.toDecision("rules").picks, "t"), /Re-plan once/);
+  await session.generateCandidates({ priceMax: 3, preferTags: ["urn:tag:mock:family"] });
+  await session.scoreMembers();
+  session.ranked[0].min_satisfaction = 0.4;
   assert.equal(session.finalize(session.toDecision("rules").picks, "t"), "saved");
+});
+
+test("explanations can't predict how a person will feel", async () => {
+  const session = new DecisionSession(huddle(""));
+  await session.generateCandidates({ priceMax: 4 });
+  await session.scoreMembers();
+  const picks = session.toDecision("rules").picks.map((p, i) => (i === 0 ? { ...p, why_group: "Friend 0 loves it." } : p));
+  assert.match(session.finalize(picks, "t"), /predicts how a person will feel/);
 });

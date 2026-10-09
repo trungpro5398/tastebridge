@@ -314,6 +314,13 @@ export default function Results({
             )}
           </div>
           <p className="max-w-prose">{top.p.why_group}</p>
+          {decision.calm_alternative && (
+            <p className="max-w-prose rounded-xl bg-soft px-3 py-2 text-sm">
+              You asked for calm. Qloo doesn&apos;t tag this place as calm or quiet; the calmest close option is{" "}
+              <b>{decision.calm_alternative.name}</b> ({decision.calm_alternative.tags.join(", ")}), with nobody with a clear
+              preference below {pct(decision.calm_alternative.lowest_match)}.
+            </p>
+          )}
           <KnownFor c={top.r} />
           <div className="pt-1">
             <NextStep c={top.r} />
