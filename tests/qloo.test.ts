@@ -31,9 +31,12 @@ test("comparison uses the documented analysis endpoint and both signals", async 
     assert.equal(url.pathname, "/v2/analysis/compare");
     assert.equal(url.searchParams.get("a.signal.interests.entities"), "a");
     assert.equal(url.searchParams.get("b.signal.interests.entities"), "b");
-    return Response.json({ results: { fixture: true } });
+    return Response.json({ results: { tags: [
+      { name: "United States", subtype: "urn:tag:region:qloo", query: { score: 0.99 } },
+      { name: "Jazz", subtype: "urn:tag:genre:music", query: { score: 0.904 } },
+    ] } });
   });
-  assert.deepEqual(await compareTastes(["a"], ["b"], "urn:entity:movie"), { fixture: true });
+  assert.deepEqual(await compareTastes(["a"], ["b"], "urn:entity:movie"), [{ tag: "Jazz", score: 0.9 }]);
 });
 
 test("network failures become a handled Qloo error", async (t) => {
@@ -58,4 +61,14 @@ test("provenance log records each request with entity ids redacted and no key", 
   assert.equal(calls[0].params["filter.type"], "urn:entity:movie");
   const dump = JSON.stringify(calls);
   assert.ok(!dump.includes("secret-a") && !dump.includes("test-fixture-only"));
+});
+
+test("venue addresses shorten to the suburb", async () => {
+  const { shortAddress } = await qloo;
+  assert.equal(shortAddress("380 Brunswick St Fitzroy VIC 3065 Australia"), "Fitzroy");
+  assert.equal(shortAddress("4 Princes Hwy Beaconsfield VIC 3807 Australia"), "Beaconsfield");
+  assert.equal(shortAddress("797 Glenferrie Rd Hawthorn VIC 3122 Australia"), "Hawthorn");
+  assert.equal(shortAddress("1 Main St, Springfield, IL 62701, USA"), "1 Main St, Springfield");
+  assert.equal(shortAddress("Evan Walker Bridge Southbank VIC 3006 Australia"), "Southbank");
+  assert.equal(shortAddress(undefined), undefined);
 });

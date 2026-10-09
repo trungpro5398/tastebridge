@@ -10,7 +10,7 @@ const TYPE_LABEL: Record<string, string> = {
   "urn:entity:book": "Book",
   "urn:entity:place": "Place",
   "urn:entity:podcast": "Podcast",
-  "urn:entity:video_game": "Game",
+  "urn:entity:videogame": "Game",
 };
 
 export const typeLabel = (t: string) => TYPE_LABEL[t] ?? t.replace("urn:entity:", "");

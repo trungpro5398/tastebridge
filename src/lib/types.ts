@@ -5,7 +5,7 @@ export type EntityType =
   | "urn:entity:book"
   | "urn:entity:place"
   | "urn:entity:podcast"
-  | "urn:entity:video_game";
+  | "urn:entity:videogame";
 
 /** What the group is deciding on tonight. */
 export type HuddleKind = "place" | "movie" | "tv_show";
@@ -24,6 +24,8 @@ export type Entity = {
   description?: string;
   tags?: { id: string; name: string }[];
   meta?: string;
+  /** full street address (places), for map links */
+  address?: string;
 };
 
 /** A candidate as returned by /v2/insights, plus explainability. */

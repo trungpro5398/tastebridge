@@ -32,6 +32,25 @@ function Thumb({ c }: { c: RankedCandidate }) {
   );
 }
 
+/** The obvious next action once the group has a pick. */
+function NextStep({ c }: { c: RankedCandidate }) {
+  const q = encodeURIComponent([c.entity.name, c.entity.address ?? c.entity.meta?.split(" · ")[0]].filter(Boolean).join(" "));
+  const isPlace = c.entity.type === "urn:entity:place";
+  const href = isPlace
+    ? `https://www.google.com/maps/search/?api=1&query=${q}`
+    : `https://www.justwatch.com/au/search?q=${encodeURIComponent(c.entity.name)}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:bg-soft"
+    >
+      {isPlace ? "📍 Open in Maps" : "▶ Where to watch"}
+    </a>
+  );
+}
+
 export default function Results({ decision }: { decision: Decision }) {
   const byId = new Map(decision.ranked.map((r) => [r.entity.entity_id, r]));
   const picks = decision.picks.map((p) => ({ p, r: byId.get(p.entity_id) })).filter((x) => x.r) as {
@@ -57,13 +76,18 @@ export default function Results({ decision }: { decision: Decision }) {
         <div className="bg-brand/10 px-5 py-2 text-xs font-medium uppercase tracking-wider text-brand">
           Tonight&apos;s fair pick
         </div>
+        {top.r.entity.image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={top.r.entity.image} alt="" className="h-48 w-full object-cover sm:h-56" />
+        )}
         <div className="p-5">
           <div className="flex gap-4">
-            <Thumb c={top.r} />
+            {!top.r.entity.image && <Thumb c={top.r} />}
             <div className="min-w-0">
               <h2 className="text-xl font-semibold leading-tight">{top.p.headline}</h2>
               {top.r.entity.meta && <p className="text-sm text-muted">{top.r.entity.meta}</p>}
               <p className="mt-1 text-sm">{top.p.why_group}</p>
+              <NextStep c={top.r} />
             </div>
           </div>
           <div className="mt-5 space-y-2">

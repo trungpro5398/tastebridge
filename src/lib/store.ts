@@ -91,3 +91,21 @@ export async function addFeedback(huddleId: string, vote: "up" | "down") {
   const upd = await sb.from("huddles").update({ feedback: next }).eq("id", huddleId);
   if (upd.error) throw new Error(upd.error.message);
 }
+
+// ---------- tiny server-side cache (kv table), e.g. resolved demo favourites ----------
+const kvMem = ((globalThis as unknown as { __kv?: Map<string, { at: number; value: unknown }> }).__kv ??= new Map());
+
+export async function kvGet<T>(key: string, maxAgeMs: number): Promise<T | null> {
+  if (!sb) {
+    const hit = kvMem.get(key);
+    return hit && Date.now() - hit.at < maxAgeMs ? (hit.value as T) : null;
+  }
+  const { data } = await sb.from("kv").select("value, updated_at").eq("key", key).maybeSingle();
+  if (!data || Date.now() - new Date(data.updated_at as string).getTime() > maxAgeMs) return null;
+  return data.value as T;
+}
+
+export async function kvSet(key: string, value: unknown) {
+  if (!sb) return void kvMem.set(key, { at: Date.now(), value });
+  await sb.from("kv").upsert({ key, value, updated_at: new Date().toISOString() });
+}

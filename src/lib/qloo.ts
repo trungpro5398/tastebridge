@@ -12,6 +12,9 @@ const KEY = process.env.QLOO_API_KEY;
 
 export const qlooMode: "live" | "mock" = KEY ? "live" : "mock";
 
+/** Qloo genre tag that keeps "dinner spot" shortlists to restaurants (live data only). */
+export const DINNER_TAG = qlooMode === "live" ? "urn:tag:category:place:restaurant" : undefined;
+
 export class QlooError extends Error {
   constructor(
     message: string,
@@ -60,6 +63,27 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 const g = globalThis as unknown as { __qlooCache?: Map<string, { at: number; data: unknown }> };
 const cache = (g.__qlooCache ??= new Map());
 
+// ---------- rate limiting: the hackathon key is rate limited, so keep requests few and spaced ----------
+const MAX_CONCURRENT = Number(process.env.QLOO_MAX_CONCURRENT ?? 2);
+const MIN_SPACING_MS = Number(process.env.QLOO_MIN_SPACING_MS ?? 120);
+const RETRIES_429 = 3;
+const lim = ((globalThis as unknown as { __qlooLim?: { active: number; last: number; queue: (() => void)[] } }).__qlooLim ??=
+  { active: 0, last: 0, queue: [] });
+
+async function limited<T>(fn: () => Promise<T>): Promise<T> {
+  if (lim.active >= MAX_CONCURRENT) await new Promise<void>((r) => lim.queue.push(r));
+  lim.active++;
+  try {
+    const gap = lim.last + MIN_SPACING_MS - Date.now();
+    if (gap > 0) await new Promise((r) => setTimeout(r, gap));
+    lim.last = Date.now();
+    return await fn();
+  } finally {
+    lim.active--;
+    lim.queue.shift()?.();
+  }
+}
+
 async function get(path: string, params: Params) {
   const started = Date.now();
   const qs = new URLSearchParams();
@@ -71,11 +95,22 @@ async function get(path: string, params: Params) {
     return hit.data;
   }
 
-  const res = await fetch(url, {
-    headers: { "X-Api-Key": KEY!, accept: "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
-  }).catch(() => { throw new QlooError("The taste service could not be reached."); });
+  // Bounded retry on 429 only; every attempt goes through the shared limiter.
+  let res: Response | undefined;
+  for (let attempt = 0; ; attempt++) {
+    res = await limited(() =>
+      fetch(url, {
+        headers: { "X-Api-Key": KEY!, accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      }),
+    ).catch(() => {
+      throw new QlooError("The taste service could not be reached.");
+    });
+    if (res.status !== 429 || attempt >= RETRIES_429) break;
+    const wait = Number(res.headers.get("retry-after")) * 1000 || 600 * 2 ** attempt;
+    await new Promise((r) => setTimeout(r, Math.min(wait, 4000)));
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new QlooError(`Qloo ${path} → ${res.status}: ${body.slice(0, 300)}`, res.status);
@@ -97,7 +132,8 @@ function toEntity(r: Raw): Entity {
   const type =
     (r.subtype as string) ?? (r.type as string) ?? (asArr(r.types)[0] as unknown as string) ?? "urn:entity";
   const year = props.release_year ?? props.publication_year;
-  const addr = (props.address as string) ?? (r.location as Raw | undefined)?.address;
+  const fullAddress = (props.address as string) ?? ((r.location as Raw | undefined)?.address as string) ?? undefined;
+  const addr = shortAddress(fullAddress);
   const price = num(props.price_level);
   const meta = [year, addr, price ? "$".repeat(price) : undefined].filter(Boolean).join(" · ") || undefined;
   return {
@@ -110,6 +146,7 @@ function toEntity(r: Raw): Entity {
       .slice(0, 12)
       .map((t) => ({ id: String(t.id ?? t.tag_id), name: String(t.name) })),
     meta,
+    address: fullAddress,
   };
 }
 
@@ -206,14 +243,35 @@ export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
 }
 
 /** Qloo Analysis Compare; only called in live mode. */
+/**
+ * Qloo Analysis Compare; only called in live mode. Returns the strongest shared taste tags
+ * (compact: the raw response is ~50 KB and goes to the model).
+ */
 export async function compareTastes(a: string[], b: string[], type: EntityType) {
   const data = (await get("/v2/analysis/compare", {
     "a.signal.interests.entities": a.join(","),
     "b.signal.interests.entities": b.join(","),
     "filter.type": type,
-    take: 5,
+    take: 12,
   })) as Raw;
-  return data.results ?? null;
+  const tags = asArr((data.results as Raw | undefined)?.tags);
+  return tags
+    .filter((t) => !String(t.subtype ?? t.type ?? "").includes(":region"))
+    .map((t) => ({ tag: String(t.name), score: +(num((t.query as Raw | undefined)?.score) ?? 0).toFixed(2) }))
+    .slice(0, 6);
+}
+
+/** "380 Brunswick St Fitzroy VIC 3065 Australia" → "Fitzroy"; otherwise the first two comma parts. */
+export function shortAddress(addr?: string) {
+  if (!addr) return undefined;
+  const au = addr.match(/([A-Za-z' .-]+?)\s+(?:VIC|NSW|QLD|WA|SA|TAS|ACT|NT)\s+\d{4}/);
+  if (au) {
+    const words = au[1].trim().split(/\s+/);
+    // drop street words before the suburb ("Brunswick St Fitzroy" → "Fitzroy")
+    const i = words.findLastIndex((w) => /^(St|Rd|Ave|Hwy|Pde|Dr|Ln|Lane|Street|Road|Pl|Ct|Cres|Blvd|Tce|Way|Cl|Gr|Sq|Bridge|Arcade|Mall|Walk|Promenade|Esplanade|Wharf|Alley|Place)\.?$/i.test(w));
+    return words.slice(i + 1).join(" ") || words.join(" ");
+  }
+  return addr.split(",").slice(0, 2).join(",").trim();
 }
 
 // ---------- mock scoring: tag overlap, deterministic ----------

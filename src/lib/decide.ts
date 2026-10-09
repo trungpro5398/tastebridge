@@ -5,7 +5,7 @@
  */
 import "server-only";
 import { rankFairly } from "./fairness";
-import { compareTastes, findTags, insights, qlooMode } from "./qloo";
+import { DINNER_TAG, compareTastes, findTags, insights, qlooMode } from "./qloo";
 import {
   KIND_TO_TYPE,
   type Decision,
@@ -72,6 +72,8 @@ export class DecisionSession {
     // Diet and budget requirements survive agent retries and API fallback.
     if (this.requiredTags === null) {
       const tags: string[] = [];
+      // "Dinner spot" means restaurants, not bars or shops (live Qloo genre tag).
+      if (this.huddle.kind === "place" && DINNER_TAG) tags.push(DINNER_TAG);
       if (this.huddle.kind === "place") {
         for (const diet of ["vegetarian", "vegan", "gluten-free"]) {
           if (!this.huddle.notes?.toLowerCase().includes(diet)) continue;
@@ -109,7 +111,7 @@ export class DecisionSession {
     this.log(
       "group_candidates",
       `${this.shortlist.length} candidates from the group's combined taste` +
-        (tags.length ? ` with tags ${tags.join(", ")}` : "") +
+        (tags.length ? ` with tags ${tags.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")).join(", ")}` : "") +
         (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : ""),
     );
     return this.shortlist;
@@ -162,7 +164,7 @@ export class DecisionSession {
     if (qlooMode === "live") {
       try {
         analysis = await compareTastes(ma.picks.map((p) => p.entity_id), mb.picks.map((p) => p.entity_id), this.type);
-        this.log("compare_tastes", "Qloo Analysis Compare completed");
+        this.log("compare_tastes", `Qloo Analysis Compare: shared ${(analysis as { tag: string }[]).map((t) => t.tag).join(", ") || "no strong tags"}`);
       } catch {
         this.log("compare_tastes", "Qloo comparison unavailable; using the scored shortlist");
       }

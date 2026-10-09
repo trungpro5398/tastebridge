@@ -37,3 +37,11 @@ alter table agent_runs enable row level security;
 
 -- Optional one-tap feedback after a decision (no personal data).
 alter table huddles add column if not exists feedback jsonb not null default '[]';
+
+-- Small server-side cache (e.g. resolved demo favourites) so judges' demo clicks don't spend Qloo quota.
+create table if not exists kv (
+  key         text primary key,
+  value       jsonb not null,
+  updated_at  timestamptz not null default now()
+);
+alter table kv enable row level security;
