@@ -4,10 +4,10 @@ import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
 const example = [
-  { name: "Mai", v: 79, why: "Amélie, Norah Jones" },
-  { name: "Josh", v: 68, why: "John Wick, Mad Max" },
-  { name: "Priya", v: 100, why: "The Bear, Salt Fat Acid Heat" },
-  { name: "Leo", v: 74, why: "Severance, Radiohead" },
+  { name: "Bà Lan", v: 61 },
+  { name: "Minh", v: 48 },
+  { name: "Linh", v: 78 },
+  { name: "Mai", v: 56 },
 ];
 
 const steps = [
@@ -46,7 +46,7 @@ export default function Home() {
       <section className="grid items-center gap-10 sm:grid-cols-[1.15fr_1fr]">
         <div>
           <h1 className="font-display text-5xl font-semibold leading-[0.98] tracking-tight sm:text-6xl">
-            Four friends, four tastes, one fair pick.
+            Everyone&apos;s taste on the table. One fair pick.
           </h1>
           <p className="mt-5 max-w-md text-lg text-muted">
             Everyone adds three favourite films, shows or artists. An agent asks Qloo&apos;s taste graph what the whole
@@ -66,11 +66,11 @@ export default function Home() {
             <span className="text-sm font-semibold text-brand">Example fair pick</span>
             <span className="text-xs text-muted">live Qloo data, Melbourne</span>
           </figcaption>
-          <p className="mt-2 font-display text-2xl font-semibold">Archie&apos;s All Day</p>
-          <p className="text-sm text-muted">Fitzroy, $$. Brunch, welcoming.</p>
+          <p className="mt-2 font-display text-2xl font-semibold">Silks</p>
+          <p className="text-sm text-muted">Southbank, $$. Sunday lunch for three generations.</p>
           <ul className="mt-4 space-y-2.5">
             {example.map((p, i) => (
-              <li key={p.name} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${p.name === "Josh" ? "bg-accent/15" : ""}`}>
+              <li key={p.name} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${p.name === "Minh" ? "bg-accent/15" : ""}`}>
                 <Avatar name={p.name} color={memberColor(i)} size="sm" />
                 <div className="min-w-0 flex-1">
                   <div className="flex justify-between text-sm">
@@ -85,8 +85,8 @@ export default function Home() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-muted">
-            A simple average would choose Chotto Motto, where Josh drops to 58%. TasteBridge keeps everyone at 68% or
-            more.
+            A simple average would choose Republica St Kilda Beach, where Bà Lan drops to 10%. TasteBridge keeps
+            everyone at 48% or more.
           </p>
         </figure>
       </section>
@@ -107,8 +107,8 @@ export default function Home() {
       <section className="rounded-3xl bg-brand p-6 text-brand-ink sm:p-10">
         <h2 className="font-display text-3xl font-semibold tracking-tight">Why groups trust the pick</h2>
         <p className="mt-2 max-w-2xl opacity-80">
-          We ran 60 random groups through live Qloo data. In 37% of them, a simple average would have picked something
-          one person matched poorly. TasteBridge&apos;s pick lifted that person by 17 points on average.
+          We ran 120 random groups through live Qloo data. In 45% of them, a simple average would have picked
+          something one person matched poorly. TasteBridge&apos;s pick lifted that person by 13 points on average.
         </p>
         <dl className="mt-6 grid gap-6 sm:grid-cols-3">
           {why.map((w) => (

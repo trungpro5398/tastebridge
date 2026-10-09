@@ -6,8 +6,8 @@ TasteBridge helps a group pick **one** dinner spot, movie or TV show that everyo
 
 1. One person starts a *huddle*, adds must-haves ("Priya is vegetarian, under $$$") and shares a link.
 2. Each friend adds up to three favourites from **any** domain: a film, an artist, a show, a book.
-3. The agent builds a shortlist from the group's combined taste, then **scores that same shortlist against each person's own taste**.
-4. It recommends the option that maximises the **lowest taste match** in the group. Everyone sees their own match and the favourite behind it ("driven mostly by *Spirited Away*").
+3. **Everyone's taste goes on the table.** The shortlist holds each person's own top Qloo matches ("Linh's top match") plus options from the group's combined taste. The agent then **scores that same shortlist against each person's own taste**.
+4. It recommends the option that maximises the **lowest taste match among people who actually have a preference tonight**. Everyone sees their own match and the favourite behind it ("driven mostly by *MasterChef: Australia*"). People Qloo sees as indifferent between tonight's options are marked **flexible tonight** instead of being "protected" on noise.
 5. It also shows what a simple average would have picked and whose match would have been lowest there. Sometimes both pick the same thing, and the app says so.
 
 ## How Qloo makes it work
@@ -15,7 +15,7 @@ Without Qloo there is no way to know how a fan of *Mad Max* and Daft Punk will f
 
 - `/search`: cross-domain autocomplete for favourites (movies, TV, artists, books, podcasts, games).
 - `/v2/tags`: turns must-haves into tag filters. Dinner huddles also require `urn:tag:category:place:restaurant`, so bars and shops are excluded.
-- `/v2/insights` with `signal.interests.entities`: the group shortlist, seeded round-robin so no member dominates.
+- `/v2/insights` with `signal.interests.entities`: the group shortlist (seeded round-robin so no member dominates) plus one call per member for their own top matches, all with the same filters.
 - `/v2/insights` with `filter.results.entities` and `feature.explainability`: re-scores the **same** candidates for each member, and tells us which of that member's favourites drove the match.
 - `/v2/analysis/compare`: explains where two members' tastes overlap and where they split.
 
@@ -25,17 +25,19 @@ Every result has a **Qloo evidence** panel listing the exact requests behind it:
 Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, under $$$".
 
 1. `GET /v2/tags?filter.query=vegetarian` returns candidate tags. The agent picks the dietary tag rather than a genre tag with a similar name, and the panel shows which tag it chose.
-2. `GET /v2/insights?filter.type=urn:entity:place&signal.interests.entities=<12 favourites, round-robin>&filter.tags=<vegetarian tag>&operator.filter.tags=intersection&filter.price_level.max=3&filter.location.query=Melbourne&feature.explainability=true` returns the group shortlist.
+2. `GET /v2/insights?filter.type=urn:entity:place&signal.interests.entities=<12 favourites, round-robin>&filter.tags=<vegetarian tag>&operator.filter.tags=intersection&filter.price_level.max=3&filter.location.query=Melbourne&feature.explainability=true` returns the group shortlist. The same request with **one member's favourites** as the signal returns that member's own top matches; the top 3 per person join the shortlist first.
 3. Four calls of `GET /v2/insights?...&signal.interests.entities=<one member's 3 favourites>&filter.results.entities=<shortlist ids>` score the same shortlist once per member. `query.affinity` is converted to a within-member percentile, and `query.explainability` names which favourite drove each match.
 4. Maximin and Nash pick the winner. The UI shows each member's match, the favourite behind it, and the simple-average alternative.
 
-**Real run (production, 9 Oct 2026):**
-- Four friends: Mai (*Spirited Away*, Norah Jones, *Amélie*), Josh (*Mad Max: Fury Road*, *John Wick*, Daft Punk), Priya (*Ratatouille*, *The Bear*, *Salt Fat Acid Heat*) and Leo (*Parasite*, *Severance*, Radiohead).
-- Must-have: "Keep it under $$$".
-- Qloo returned 20 Melbourne restaurants.
-- A simple average picks Chotto Motto (Collingwood), where Josh's taste match is only 58%.
-- TasteBridge picks **Archie's All Day** (Fitzroy), lifting the lowest match to 68%: Mai 79%, Josh 68%, Priya 100%, Leo 74%. Each person sees which of their favourites drove the match.
-- Five Qloo calls, about 20 seconds end to end.
+**Real run (production, 10 Oct 2026): Sunday lunch, three generations**
+- Bà Lan (Khánh Ly, Trịnh Công Sơn, *The Scent of Green Papaya*), Minh (*The Godfather*, Bruce Springsteen, *Top Gear*), Linh (*Crazy Rich Asians*, Adele, *MasterChef: Australia*) and Mai, the youngest (*Bluey*, *Frozen*, Taylor Swift).
+- Must-have: "Bà likes it calm. Under $$$." The agent looked up Qloo's *calm* and *quiet* ambience tags and used them as soft preferences with a $$ cap.
+- First pass: 22 Melbourne restaurants, 6 of them individual members' own top matches. The fairest option left Minh at 48%.
+- **The agent re-planned on its own:** it added a soft *Vietnamese restaurant* preference, drawn from Bà Lan's favourites, rebuilt the shortlist (24 options, 9 own top matches) and rescored everyone. The lowest match rose from 48% to 55%.
+- A simple average picks Republica St Kilda Beach, where **Bà Lan's taste match is 19%**.
+- TasteBridge picks **Silks** (Southbank), and nobody is below 55%: Bà Lan 65%, Minh 55%, Linh 78%, Mai 62%.
+- On the Taste Map, Silks sits near the middle of the four corners, while Republica is pulled away from Bà Lan.
+- 21 Qloo calls; Claude cost $0.06.
 
 ## How we built it
 - **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, re-plans when someone is left behind, and writes explanations from tool output only. Diet and budget constraints survive retries. `finalize` enforces the scorer's top-three order, so the model can't override the maths.
@@ -53,11 +55,11 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 ## Does fairness change anything? We measured it
 `scripts/evaluate.mts` runs random groups of 3–5 people (3 favourites each, drawn from 24 well-known titles and artists) through the same pipeline on **live Qloo data**, in rules mode with no LLM.
 
-Across **60 groups** (30 dinner, 30 movie):
-- The fair pick differed from the highest-average pick in **37%** of groups.
-- Where it differed, the **least-matched person gained +17.1 percentile points**, while the group average dropped 7.1.
-- A second run of 20 groups gave the same picture: 30% differed, +21.3 vs −8.6.
-- **41% of people were "flexible tonight"**: Qloo's scores for them barely differed across options. TasteBridge shrinks their percentiles toward neutral, so noise never decides the evening or gets labelled as "the person we protected".
+Across **120 groups** in two runs of 60 (half dinner, half movie):
+- The fair pick differed from the highest-average pick in **45%** of groups (50% and 40% in the two runs).
+- Where it differed, the **least-matched person gained +13.0 percentile points**, while the group average dropped 6.3.
+- Putting everyone's own top matches on the table made fairness matter more often: on the same 60 groups, the old group-only shortlist differed in 37%.
+- **37% of people were "flexible tonight"**: Qloo's scores for them barely differed across options. TasteBridge shrinks their percentiles toward neutral, so noise never decides the evening or gets labelled as "the person we protected".
 
 Full method and caveats are in `docs/EVALUATION.md`.
 

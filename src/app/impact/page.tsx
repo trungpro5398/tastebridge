@@ -72,16 +72,17 @@ export default function ImpactPage() {
       <section>
         <h2 className="font-display text-2xl font-semibold">Evaluation on live Qloo data</h2>
         <p className="mt-1 text-sm text-muted">
-          60 random groups of 3–5 people (30 dinner, 30 movie), same pipeline as the app, no LLM. Synthetic groups.{" "}
+          120 random groups of 3–5 people (60 dinner, 60 movie) in two runs, same pipeline as the app, no LLM.
+          Synthetic groups.{" "}
           <a className="text-brand underline-offset-4 hover:underline" href="https://github.com/trungpro5398/tastebridge/blob/main/docs/EVALUATION.md">
             Method
           </a>
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Fair pick ≠ average" value="37%" note="22 of 60 groups" />
-          <Stat label="Lift for least-matched" value="+17.1" note="percentile points, where they differ" />
-          <Stat label="Cost to group average" value="−7.1" note="percentile points, where they differ" />
-          <Stat label="Flexible tonight" value="41%" note="of people: Qloo saw little difference for them" />
+          <Stat label="Fair pick ≠ average" value="45%" note="54 of 120 groups" />
+          <Stat label="Lift for least-matched" value="+13.0" note="percentile points, where they differ" />
+          <Stat label="Cost to group average" value="−6.3" note="percentile points, where they differ" />
+          <Stat label="Flexible tonight" value="37%" note="of people: Qloo saw little difference for them" />
         </div>
       </section>
 

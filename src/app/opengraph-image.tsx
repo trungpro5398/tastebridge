@@ -39,9 +39,9 @@ export default function Image() {
           TasteBridge
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 80, fontWeight: 700, lineHeight: 1.05 }}>Four friends, four tastes, one fair pick.</div>
+          <div style={{ fontSize: 80, fontWeight: 700, lineHeight: 1.05 }}>Everyone’s taste on the table. One fair pick.</div>
           <div style={{ fontSize: 34, color: "#6b6477" }}>
-            One fair pick for the whole group, with the Qloo evidence behind it.
+            Each person’s top matches, ranked so nobody is left behind. Powered by Qloo.
           </div>
         </div>
         <div style={{ display: "flex", gap: 16 }}>

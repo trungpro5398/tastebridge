@@ -105,7 +105,7 @@ export async function decide(
         return json({
           count: list.length,
           sample: list.slice(0, 8).map((c) => c.name),
-          ...(s.repeated ? { note: "Identical to the previous request: same shortlist and scores. Change the options or finalize." } : {}),
+          ...(s.repeated ? { note: "Same shortlist as before, so the scores are unchanged. Change the options meaningfully or finalize." } : {}),
         });
       },
     }),

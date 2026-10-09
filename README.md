@@ -48,7 +48,7 @@ A full agent decision measures about **$0.03–0.06** with Claude Sonnet 5.5: pr
 
 ### Does it matter? (live evaluation)
 
-Across 60 random groups on live Qloo data (30 dinner, 30 movie), the fair pick differed from the highest-average pick in **37%** of groups. Where it differed, it lifted the least-matched person by **+17.1 percentile points**, at a cost of 7.1 points to the group average. **41% of people were "flexible tonight"**: Qloo saw little difference between options for them, so the app doesn't present their noise-level differences as preferences. Method, a second run and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
+Across 120 random groups on live Qloo data (two runs of 60; half dinner, half movie), the fair pick differed from the highest-average pick in **45%** of groups. Where it differed, it lifted the least-matched person by **+13.0 percentile points**, at a cost of 6.3 points to the group average. **37% of people were "flexible tonight"**: Qloo saw little difference between options for them, so the app doesn't present their noise-level differences as preferences. Method, both runs and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ### The fairness rule
 

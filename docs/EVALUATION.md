@@ -7,14 +7,14 @@
 - `scripts/evaluate.mts` builds random groups of 3–5 people from a fixed pool of 24 well-known favourites: films, TV shows and artists, resolved with Qloo `/search`.
 - Each person gets 3 favourites. Half the groups decide on a dinner spot in Melbourne, half on a movie.
 - Each group runs through the app's pipeline in rules mode (no LLM):
-  1. One Qloo Insights call builds a 30-option shortlist.
+  1. Qloo Insights builds a shortlist of up to 30 options: each person's own top 3 matches first ("everyone's taste on the table"), then options from the group's combined taste. Same filters for every call.
   2. One call per person re-scores that shortlist (`filter.results.entities` + `feature.explainability`).
   3. Percentiles within the shortlist are **shrunk toward neutral for people whose Qloo scores barely differ** ("flexible tonight", see below).
   4. Two picks are compared:
      - **average pick:** highest mean match;
      - **fair pick:** highest *lowest* match, with Nash welfare breaking ties.
 
-Reproduce it: `node --conditions=react-server --import tsx scripts/evaluate.mts 60 2026` (requires `QLOO_API_KEY`). Only aggregates are printed.
+Reproduce it: `node --conditions=react-server --import tsx scripts/evaluate.mts 60 2026` and `... 60 7` (requires `QLOO_API_KEY`). Only aggregates are printed.
 
 ### Why "flexible tonight"
 Qloo affinities share a 0–1 scale. We measured each person's spread (max − min) across their shortlist, 40 people on live data:
@@ -29,14 +29,25 @@ A spread of 0.02 turned into a 0–100% percentile is noise, not preference. So 
 
 ## Results
 
+Current pipeline (each person's own top matches on the table), 10 October 2026:
+
 | Run | Groups | People flexible tonight | Fair pick ≠ average pick | Where they differ: gain for the least-matched person | Where they differ: cost to the group average |
 |---|---|---|---|---|---|
-| seed 2026 | 60 (30 dinner, 30 movie) | 92 / 224 (41%) | 22 (37%) | **+17.1 pts** | −7.1 pts |
-| seed 7 | 20 (10 dinner, 10 movie) | 31 / 87 (36%) | 6 (30%) | **+21.3 pts** | −8.6 pts |
+| seed 2026 | 60 (30 dinner, 30 movie) | 86 / 224 (38%) | 24 (40%) | **+15.4 pts** | −6.2 pts |
+| seed 7 | 60 (30 dinner, 30 movie) | 87 / 245 (36%) | 30 (50%) | **+11.1 pts** | −6.3 pts |
+| **both** | **120** | **173 / 469 (37%)** | **54 (45%)** | **+13.0 pts** | **−6.3 pts** |
+
+Previous pipeline (shortlist from the group's combined taste only), same day:
+
+| Run | Groups | People flexible tonight | Fair pick ≠ average pick | Gain | Cost |
+|---|---|---|---|---|---|
+| seed 2026 | 60 | 92 / 224 (41%) | 22 (37%) | +17.1 pts | −7.1 pts |
+| seed 7 | 20 | 31 / 87 (36%) | 6 (30%) | +21.3 pts | −8.6 pts |
 
 **Reading.**
-- In roughly one group in three, the highest average leaves the least-matched person well behind. When that happens, the fair pick lifts them by about 17–21 percentile points for a 7–9 point drop in the group average.
-- About 40% of people are effectively indifferent across a shortlist. In these runs, flexibility-awareness did not change which option won compared with plain maximin (0/80). What it changes is **who the app says it is protecting**: never someone whose "low score" is noise. It also stops the interface from presenting noise-level differences as strong preferences.
+- With the current pipeline, the highest average leaves the least-matched person behind in almost half of groups. When that happens, the fair pick lifts them by about 13 percentile points for a 6-point drop in the group average.
+- **Why the shortlist change matters.** A shortlist built only from the blended group taste is made of compromises, so each person's Qloo scores across it are compressed and the average is rarely unfair. Adding each person's own top matches puts real alternatives on the table. Fairness then decides more often (45% vs about 35%), with a slightly smaller lift each time. On the same 60 groups (seed 2026), the share that differ went from 37% to 40%.
+- About 37% of people are effectively indifferent across a shortlist. Flexibility-awareness changed the winner against plain maximin in 1 of 120 groups. What it mainly changes is **who the app says it is protecting**: never someone whose "low score" is noise. It also stops the interface from presenting noise-level differences as strong preferences.
 
 ## Limitations
 

@@ -173,7 +173,19 @@ export class DecisionSession {
       championOf.has(e.entity_id) ? { ...e, champion_of: championOf.get(e.entity_id) } : e,
     );
     const { kept, droppedFar } = maxKm ? withinRadius(merged, maxKm) : { kept: merged, droppedFar: 0 };
-    this.shortlist = kept.slice(0, take);
+    const next = kept.slice(0, take);
+    const sameList =
+      this.picks === null &&
+      this.ranked.length > 0 &&
+      next.length === this.shortlist.length &&
+      next.every((e, i) => e.entity_id === this.shortlist[i].entity_id);
+    if (sameList) {
+      // different arguments, same options: keep the existing scores instead of re-scoring everyone
+      this.repeated = true;
+      this.log("group_candidates", "this request produced the same shortlist as before, so the existing scores are reused");
+      return this.shortlist;
+    }
+    this.shortlist = next;
     const brought = this.shortlist.filter((e) => e.champion_of).length;
     this.location = location;
     this.filters = {

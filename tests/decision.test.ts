@@ -155,3 +155,14 @@ test("each member's own top matches are on the table and labelled", async () => 
   // brought options come first, so a small shortlist still contains them
   assert.ok(list.slice(0, brought.length).every((e) => e.champion_of));
 });
+
+test("a different request that yields the same shortlist keeps the existing scores", async () => {
+  const session = new DecisionSession(huddle(""));
+  await session.generateCandidates({ priceMax: 4 });
+  await session.scoreMembers();
+  const ranked = session.ranked;
+  await session.generateCandidates({ priceMax: 4, popularityMax: 1 });
+  assert.equal(session.repeated, true);
+  await session.scoreMembers();
+  assert.equal(session.ranked, ranked);
+});
