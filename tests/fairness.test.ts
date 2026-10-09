@@ -172,3 +172,13 @@ test("someone who gave way last time gets a capped credit that can tip a close c
   assert.equal(leaning, "y");
   assert.ok(plain === "x" || plain === "y");
 });
+
+test("a carried-over credit can't override kindness to everyone", async () => {
+  const { fairOrder } = await import("../src/lib/fairness");
+  const opt = (id: string, floor: number, debt: number, all: number) => ({
+    entity: entity(id), scores: [], min_satisfaction: floor, debt_floor: debt, min_all: all, mean_satisfaction: 0.5, nash: 0,
+  });
+  // the next-outing case: credit lowers moat's floor, but moat is far kinder to the flexible teen
+  const order = fairOrder([opt("ima", 0.579, 0.579, 0.28), opt("moat", 0.566, 0.524, 0.566)]);
+  assert.equal(order[0].entity.entity_id, "moat");
+});

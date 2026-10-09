@@ -127,11 +127,13 @@ export const FLOOR_TIE = 0.03;
  */
 export function fairOrder(options: RankedCandidate[]): RankedCandidate[] {
   const rest = [...options];
+  // a carried-over credit is small: it may break a close call, never override kindness to everyone
+  const credit = Math.max(0, ...options.map((r) => r.min_satisfaction - (r.debt_floor ?? r.min_satisfaction)));
   const out: RankedCandidate[] = [];
   while (rest.length) {
     const floor = (r: RankedCandidate) => r.debt_floor ?? r.min_satisfaction;
     const best = Math.max(...rest.map(floor));
-    const near = rest.filter((r) => floor(r) >= best - FLOOR_TIE - 1e-9);
+    const near = rest.filter((r) => floor(r) >= best - FLOOR_TIE - credit - 1e-9);
     near.sort(
       (a, b) =>
         (b.min_all ?? b.min_satisfaction) - (a.min_all ?? a.min_satisfaction) ||

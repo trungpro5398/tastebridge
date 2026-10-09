@@ -326,7 +326,7 @@ export default function Results({
               {decision.carried_over
                 .map((c) => `${c.member_name} gave way at ${c.previous_pick} (${pct(c.previous_match)})`)
                 .join("; ")}
-              , so tonight leans their way a little.
+              , so close calls tonight lean their way.
             </p>
           )}
           {decision.private_exclusions && (

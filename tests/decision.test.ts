@@ -254,3 +254,19 @@ test("a private 'not tonight' also removes options whose name says it", async ()
   await session.generateCandidates({ priceMax: 4 });
   assert.ok(!session.shortlist.some((e) => /dumpling/i.test(e.name)));
 });
+
+test("'not tonight' matches whole words and only claims what it excluded", async () => {
+  const h = huddle("");
+  h.members[0] = { ...h.members[0], avoid: "zzqx" };
+  h.members[1] = { ...h.members[1], avoid: "dump" }; // must not remove "Cinema Dumpling House"
+  const session = new DecisionSession(h);
+  await session.generateCandidates({ priceMax: 4 });
+  await session.scoreMembers();
+  const d = session.toDecision("rules");
+  assert.equal(d.private_exclusions, undefined);
+  const base = new DecisionSession(huddle(""));
+  await base.generateCandidates({ priceMax: 4 });
+  const hadDumpling = base.shortlist.some((e) => /dumpling/i.test(e.name));
+  assert.equal(session.shortlist.some((e) => /dumpling/i.test(e.name)), hadDumpling);
+  assert.ok(!JSON.stringify(d.trace).includes("no zzqx"));
+});

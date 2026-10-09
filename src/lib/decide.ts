@@ -198,11 +198,11 @@ export class DecisionSession {
       const terms = [...new Set(this.huddle.members.map((m) => m.avoid?.trim().toLowerCase().replace(/^(no|not|avoid)\s+/, "")).filter(Boolean))] as string[];
       for (const term of terms) {
         if (/\b(loud|noisy|busy|crowded|lively)\b/.test(term)) continue; // handled as a calm request
+        if (term.length < 3) continue;
         // every close variant ("Sushi", "Sushis" and their ids), since venues carry different ones
         const close = (await this.findTags(term)).filter((t) => closeTagName(t.name, term));
-        if (term.length < 3) continue;
         tags.push(...close.map((t) => t.id));
-        names.push(close[0]?.name ?? term);
+        if (close.length) names.push(close[0].name); // name-only matches are listed once they actually exclude something
         this.privateTerms.push(term); // also matched against venue/title and tag names locally
       }
       this.privateTags = tags;
@@ -246,9 +246,11 @@ export class DecisionSession {
       (isPlace ? list.filter(isDiningVenue) : list).filter(
         (e) =>
           !e.tags?.some((t) => avoidSet.has(t.id) || (calm && /^(loud|noisy|bustling|lively)$/i.test(t.name))) &&
-          !this.privateTerms.some(
-            (w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "")}`, "i").test(e.name) || e.tags?.some((t) => closeTagName(t.name, w)),
-          ),
+          !this.privateTerms.some((w) => {
+            const byName = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "")}s?\\b`, "i").test(e.name);
+            if (byName && !this.privateExclusions.some((n) => n.toLowerCase() === w)) this.privateExclusions.push(w);
+            return byName || e.tags?.some((t) => closeTagName(t.name, w));
+          }),
       );
     const dining = usable(raw);
     const droppedNonDining = raw.length - dining.length;
