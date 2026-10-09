@@ -45,6 +45,12 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
     const k = (R * 0.8) / spread; // largest imbalance reaches 80% of the way to a corner
     return { x: C + dx * k, y: C + dy * k };
   };
+  const short = (n: string) => (n.length > 18 ? `${n.slice(0, 17).trimEnd()}…` : n);
+  const labelFor = (c: RankedCandidate, r: string) => {
+    if (r === "fair") return `${short(c.entity.name)} (fair pick)`;
+    const low = [...c.scores].filter((x) => !x.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
+    return low ? `${short(c.entity.name)}: ${low.member_name} ${pct(low.satisfaction)}` : short(c.entity.name);
+  };
   const role = (c: RankedCandidate) =>
     c.entity.entity_id === top.entity.entity_id ? "fair" : c.entity.entity_id === avgId ? "avg" : "other";
   const ordered = [...options].sort((a, b) => (role(a) === "other" ? -1 : 1) - (role(b) === "other" ? -1 : 1));
@@ -91,6 +97,7 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
                   stroke="var(--card)"
                   strokeWidth={2}
                 />
+                {r !== "other" && <DotLabel x={x} y={y} text={labelFor(c, r)} />}
               </g>
             );
           })}
@@ -173,5 +180,22 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
         </tbody>
       </table>
     </figure>
+  );
+}
+
+function DotLabel({ x, y, text }: { x: number; y: number; text: string }) {
+  const right = x > C + 40;
+  return (
+    <text
+      x={right ? x - 12 : x + 12}
+      y={y + 4}
+      textAnchor={right ? "end" : "start"}
+      className="pointer-events-none fill-[var(--foreground)] text-[10px] font-semibold"
+      paintOrder="stroke"
+      stroke="var(--card)"
+      strokeWidth={3}
+    >
+      {text}
+    </text>
   );
 }
