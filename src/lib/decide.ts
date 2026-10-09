@@ -92,6 +92,8 @@ export class DecisionSession {
   /** tag ids from members' private "not tonight" requests (resolved once, never attributed) */
   privateTags: string[] | null = null;
   privateExclusions: string[] = [];
+  /** the words themselves, for checking tag names and venue names locally */
+  privateTerms: string[] = [];
   location?: string;
   changeNote = "";
   /** Claude token usage for this decision (set by the agent) */
@@ -196,11 +198,12 @@ export class DecisionSession {
       const terms = [...new Set(this.huddle.members.map((m) => m.avoid?.trim().toLowerCase().replace(/^(no|not|avoid)\s+/, "")).filter(Boolean))] as string[];
       for (const term of terms) {
         if (/\b(loud|noisy|busy|crowded|lively)\b/.test(term)) continue; // handled as a calm request
-        const tag = (await this.findTags(term)).find((t) => closeTagName(t.name, term));
-        if (tag) {
-          tags.push(tag.id);
-          names.push(tag.name);
-        }
+        // every close variant ("Sushi", "Sushis" and their ids), since venues carry different ones
+        const close = (await this.findTags(term)).filter((t) => closeTagName(t.name, term));
+        if (term.length < 3) continue;
+        tags.push(...close.map((t) => t.id));
+        names.push(close[0]?.name ?? term);
+        this.privateTerms.push(term); // also matched against venue/title and tag names locally
       }
       this.privateTags = tags;
       this.privateExclusions = names;
@@ -241,7 +244,11 @@ export class DecisionSession {
     const avoidSet = new Set(avoid);
     const usable = (list: InsightEntity[]) =>
       (isPlace ? list.filter(isDiningVenue) : list).filter(
-        (e) => !e.tags?.some((t) => avoidSet.has(t.id) || (calm && /^(loud|noisy|bustling|lively)$/i.test(t.name))),
+        (e) =>
+          !e.tags?.some((t) => avoidSet.has(t.id) || (calm && /^(loud|noisy|bustling|lively)$/i.test(t.name))) &&
+          !this.privateTerms.some(
+            (w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "")}`, "i").test(e.name) || e.tags?.some((t) => closeTagName(t.name, w)),
+          ),
       );
     const dining = usable(raw);
     const droppedNonDining = raw.length - dining.length;

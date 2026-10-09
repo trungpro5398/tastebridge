@@ -246,3 +246,11 @@ test("a private 'not tonight' is excluded without saying who asked", async () =>
   assert.match(steps, /no chinese/);
   assert.ok(!steps.includes("Friend 1"));
 });
+
+test("a private 'not tonight' also removes options whose name says it", async () => {
+  const h = huddle("");
+  h.members[0] = { ...h.members[0], avoid: "dumpling" };
+  const session = new DecisionSession(h);
+  await session.generateCandidates({ priceMax: 4 });
+  assert.ok(!session.shortlist.some((e) => /dumpling/i.test(e.name)));
+});
