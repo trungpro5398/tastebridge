@@ -3,11 +3,11 @@ import { memberColor } from "@/lib/members";
 import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
+// recorded production run, 10 Oct 2026 (/h/i8iiiqdb)
+const PEOPLE = ["Grandma Lan", "Minh", "Linh", "Mai"];
 const example = [
-  { name: "Grandma Lan", v: 57 },
-  { name: "Minh", v: 66 },
-  { name: "Linh", v: 66 },
-  { name: "Mai", v: 57 },
+  { label: "A simple average picks", name: "Kawa Sake Sushi Boat", v: [37, 68, 72, 74], fair: false },
+  { label: "TasteBridge picks", name: "The Moat", v: [57, 66, 66, 57], fair: true },
 ];
 
 const steps = [
@@ -32,7 +32,7 @@ const why = [
   },
   {
     title: "Shows its working",
-    body: "Every score is computed from Qloo data, with the exact requests listed and the favourite behind a match when one clearly stands out. Claude writes the words, never the numbers, and can't describe a vibe Qloo doesn't tag.",
+    body: "Every score is computed from Qloo data, and the exact requests are listed. Claude writes the words, never the numbers.",
   },
   {
     title: "Taste, not questionnaires",
@@ -61,32 +61,39 @@ export default function Home() {
           </a>
         </div>
 
-        <figure className="rounded-3xl border border-line bg-card p-5 shadow-[0_24px_60px_-30px_rgba(91,42,134,0.45)]">
-          <figcaption className="flex items-baseline justify-between">
-            <span className="text-sm font-semibold text-brand">Example fair pick</span>
-            <span className="text-xs text-muted">live Qloo data, Melbourne</span>
+        <figure className="rounded-3xl border border-line bg-card p-5 sm:p-6">
+          <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <span className="font-display text-lg font-semibold">Sunday lunch, three generations</span>
+            <span className="text-xs text-muted">a real run on live Qloo data</span>
           </figcaption>
-          <p className="mt-2 font-display text-2xl font-semibold">The Moat</p>
-          <p className="text-sm text-muted">Melbourne CBD, $$. Sunday lunch for three generations.</p>
-          <ul className="mt-4 space-y-2.5">
-            {example.map((p, i) => (
-              <li key={p.name} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${p.name === "Grandma Lan" ? "bg-accent/15" : ""}`}>
-                <Avatar name={p.name} color={memberColor(i)} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{p.name}</span>
-                    <span className="tabular-nums">{p.v}%</span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-soft">
-                    <div className="h-full rounded-full" style={{ width: `${p.v}%`, background: memberColor(i) }} />
-                  </div>
+          <div className="mt-5 grid grid-cols-2 gap-4">
+            {example.map((o) => (
+              <div key={o.name} className={`rounded-2xl p-3 ${o.fair ? "bg-accent/15" : "bg-soft"}`}>
+                <p className="text-xs text-muted">{o.label}</p>
+                <p className="mt-0.5 min-h-[2.5rem] text-sm font-semibold leading-tight">{o.name}</p>
+                <div className="mt-3 flex h-28 items-end gap-2" role="img" aria-label={PEOPLE.map((n, i) => `${n} ${o.v[i]}%`).join(", ")}>
+                  {o.v.map((v, i) => (
+                    <div key={PEOPLE[i]} className="flex flex-1 flex-col items-center justify-end gap-1">
+                      <span className={`text-[11px] tabular-nums ${!o.fair && i === 0 ? "font-semibold text-foreground" : "text-muted"}`}>{v}</span>
+                      <div
+                        className="w-full rounded-t-md"
+                        style={{ height: `${v}%`, background: memberColor(i), opacity: !o.fair && i !== 0 ? 0.45 : 1 }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              </li>
+                <div className="mt-1.5 flex gap-2">
+                  {PEOPLE.map((n, i) => (
+                    <span key={n} className="flex flex-1 justify-center">
+                      <Avatar name={n} color={memberColor(i)} size="sm" />
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
           <p className="mt-4 text-sm text-muted">
-            A simple average would choose Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. TasteBridge keeps
-            everyone at 57% or more.
+            The average leaves Grandma Lan at 37%. The fair pick lifts her to 57%, and nobody ends up lower than that.
           </p>
         </figure>
       </section>

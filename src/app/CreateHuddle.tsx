@@ -5,9 +5,9 @@ import { useState } from "react";
 import { guessCity, useTimeZone } from "@/lib/locale";
 
 const KINDS = [
-  { value: "place", label: "Dinner spot", emoji: "🍜" },
-  { value: "movie", label: "Movie", emoji: "🎬" },
-  { value: "tv_show", label: "TV show", emoji: "📺" },
+  { value: "place", label: "Dinner spot", hint: "restaurants nearby" },
+  { value: "movie", label: "Movie", hint: "films to watch" },
+  { value: "tv_show", label: "TV show", hint: "series to start" },
 ] as const;
 
 export default function CreateHuddle() {
@@ -66,8 +66,8 @@ export default function CreateHuddle() {
                 kind === k.value ? "border-brand bg-brand/10 font-medium" : "border-line hover:bg-soft"
               }`}
             >
-              <span className="block text-lg">{k.emoji}</span>
-              {k.label}
+              <span className="block">{k.label}</span>
+              <span className="block text-xs font-normal text-muted">{k.hint}</span>
             </button>
           ))}
         </div>
