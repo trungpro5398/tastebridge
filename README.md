@@ -81,6 +81,9 @@ Project story, a redacted request → result walkthrough and known limitations a
 - Keys are only read on the server; the browser never sees them.
 - The decide endpoint streams the agent's real steps (NDJSON) so users watch it work. It reuses the saved result while the group is unchanged.
 - **Cost guard:** the agent defaults to `claude-sonnet-5-5`, capped at `AGENT_DAILY_LIMIT` runs/day (default 100) and `AGENT_IP_HOURLY_LIMIT` per hashed IP (default 6). Over budget, it answers with rule-based explanations instead of failing.
+- Results show **known-for** chips from Qloo's own tags (menu highlights, cuisine, ambience, genre; noise filtered), which are also passed to the agent.
+- **Invite at the table:** a QR code plus copy/share link, opened automatically after the first person joins.
+- **Robust decisions:** the work runs under `after()`, so a reload does not lose it. A `deciding` marker stops two friends from starting duplicate runs.
 - A one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
 - Every decision stores a redacted **Qloo evidence** log (endpoint, filters, tag choices, result counts, live/cache/offline) shown under each result. Member names are never sent to Qloo.
 

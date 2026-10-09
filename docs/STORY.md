@@ -43,6 +43,8 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - **App:** Next.js 16, TypeScript and Tailwind, with Supabase (Postgres, row-level security, server-only access), deployed on Vercel. It is mobile-first with shareable links and huddle pages refresh automatically as friends join. Each huddle link unfurls in group chats with its own preview image showing the pick.
 - **Watch the agent work:** the decide endpoint streams each real tool step (tags → shortlist → per-member scoring → explanations) to the UI as it happens. There are no fake loading messages.
 - **Responsible cost:** Claude runs are capped per day and per hashed IP. Over budget, the app still answers using rule-based explanations, and saved results are reused while the group is unchanged.
+- **Real-world details:** each pick shows Qloo "known for" tags (e.g. *Brunch · Modern · Welcoming*), the suburb, a cover image, and a one-tap **Open in Maps** or **Where to watch** link.
+- **Built for groups in the room:** a QR invite to scan at the table. Decisions survive reloads and can't run twice when two friends press the button.
 - **Learning loop:** a one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
 - **Quality:** unit tests for minority protection, ties, constraints, empty results, invalid finalisation and Qloo request construction. CI runs on GitHub Actions.
 
