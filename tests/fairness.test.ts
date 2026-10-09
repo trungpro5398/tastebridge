@@ -182,3 +182,13 @@ test("a carried-over credit can't override kindness to everyone", async () => {
   const order = fairOrder([opt("ima", 0.579, 0.579, 0.28), opt("moat", 0.566, 0.524, 0.566)]);
   assert.equal(order[0].entity.entity_id, "moat");
 });
+
+test("between equally kind options, a carried-over credit really breaks the close call", async () => {
+  const { fairOrder } = await import("../src/lib/fairness");
+  const opt = (id: string, floor: number, debt: number, all: number) => ({
+    entity: entity(id), scores: [], min_satisfaction: floor, debt_floor: debt, min_all: all, mean_satisfaction: 0.5, nash: 0,
+  });
+  // without history x wins (60 vs 58); x is where the person who gave way is lowest, so with credit y wins
+  assert.equal(fairOrder([opt("x", 0.6, 0.6, 0.6), opt("y", 0.58, 0.58, 0.58)])[0].entity.entity_id, "x");
+  assert.equal(fairOrder([opt("x", 0.6, 0.55, 0.6), opt("y", 0.58, 0.58, 0.58)])[0].entity.entity_id, "y");
+});

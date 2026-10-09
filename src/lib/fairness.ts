@@ -134,14 +134,14 @@ export function fairOrder(options: RankedCandidate[]): RankedCandidate[] {
     const floor = (r: RankedCandidate) => r.debt_floor ?? r.min_satisfaction;
     const best = Math.max(...rest.map(floor));
     const near = rest.filter((r) => floor(r) >= best - FLOOR_TIE - credit - 1e-9);
-    near.sort(
-      (a, b) =>
-        (b.min_all ?? b.min_satisfaction) - (a.min_all ?? a.min_satisfaction) ||
-        floor(b) - floor(a) ||
-        b.nash - a.nash,
-    );
-    out.push(near[0]);
-    rest.splice(rest.indexOf(near[0]), 1);
+    // among close calls, options within 3 points on kindness to everyone count as equally kind;
+    // among those, the credited floor decides (so a carried-over credit really breaks the tie)
+    const all = (r: RankedCandidate) => r.min_all ?? r.min_satisfaction;
+    const kindest = Math.max(...near.map(all));
+    const kind = near.filter((r) => all(r) >= kindest - FLOOR_TIE - 1e-9);
+    kind.sort((a, b) => floor(b) - floor(a) || all(b) - all(a) || b.nash - a.nash);
+    out.push(kind[0]);
+    rest.splice(rest.indexOf(kind[0]), 1);
   }
   return out;
 }
