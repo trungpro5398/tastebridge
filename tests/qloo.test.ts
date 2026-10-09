@@ -82,7 +82,7 @@ test("dinner keeps restaurants, drops malls, markets, hotels and drink-first bar
   assert.equal(isDiningVenue(g("restaurant")), true);
   assert.equal(isDiningVenue(g("restaurant:italian")), true);
   assert.equal(isDiningVenue(g("restaurant:vegan")), true);
-  for (const x of ["shopping_mall", "market", "hotel", "restaurant:bar", "restaurant:cocktail_bar", "restaurant:lounge_bar", "restaurant:breakfast", "restaurant:cafe", "restaurant:coffee_shop"])
+  for (const x of ["shopping_mall", "market", "hotel", "restaurant:bar", "restaurant:cocktail_bar", "restaurant:lounge_bar", "restaurant:breakfast", "restaurant:cafe", "restaurant:coffee_shop", "restaurant:espresso_bar", "restaurant:beer_garden"])
     assert.equal(isDiningVenue(g(x)), false, x);
   assert.equal(isDiningVenue({}), true);
 });

@@ -29,7 +29,7 @@ export function isDiningVenue(e: { primaryGenre?: string }) {
   const g = e.primaryGenre;
   if (!g) return true;
   if (!g.startsWith("urn:tag:genre:place:restaurant")) return false;
-  return !/:(bar|cocktail_bar|lounge_bar|wine_bar|sports_bar|live_music_bar|pub|nightclub|lounge|rooftop_lounge|breakfast|brunch|brunch_restaurant|cafe|coffee_shop|coffee|bakery|dessert|dessert_shop|ice_cream|juice_bar|donut|tea_house)$/.test(g);
+  return !/:(bar|cocktail_bar|lounge_bar|wine_bar|sports_bar|live_music_bar|pub|nightclub|lounge|rooftop_lounge|breakfast|brunch|brunch_restaurant|cafe|coffee_shop|coffee|espresso_bar|beer_garden|bakery|dessert|dessert_shop|ice_cream|juice_bar|donut|tea_house)$/.test(g);
 }
 
 export class QlooError extends Error {
