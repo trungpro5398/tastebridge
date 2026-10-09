@@ -12,10 +12,10 @@ Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
 2. Each person adds up to 3 favourites from **any** domain: films, shows, artists, books. Qloo's taste graph maps taste across domains.
 3. The **agent** (Claude, tool use) plans the decision:
    - `find_tags` turns must-haves into Qloo tag ids (`/v2/tags`).
-   - `group_candidates` builds a shortlist from the whole group's combined taste (`/v2/insights`, round-robin signal so no one dominates).
+   - `group_candidates` puts everyone's taste on the table: each person's own top 3 Qloo matches plus options from the whole group's combined taste (`/v2/insights`, round-robin signal so no one dominates). Diet, budget and calm/quiet requests are enforced in code.
    - `score_for_members` re-scores **the same shortlist against each person's own favourites** (`/v2/insights` + `filter.results.entities` + `feature.explainability`).
-   - It ranks options with a **fairness rule**, can retry with a larger shortlist or different soft preferences, optionally runs `compare_tastes` on two members, then calls `finalize`. Diet and budget requirements survive retries. Finalization enforces the scorer's top-three order.
-4. The result shows a taste-match bar per person, the favourites behind each match, a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
+   - It ranks options with a **fairness rule** (protect the least-happy person who has a preference tonight), runs `compare_tastes` on the two people who disagree most, re-plans once when the protected person is in their bottom half, and calls `finalize`. Each plan step carries a plain-English reason shown to the group. Finalization enforces the scorer's top-three order and rejects ambience claims the Qloo tags don't support.
+4. The result shows a taste-match bar per person (with the favourite behind it when one clearly stands out, and each person's own top match), a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
 
 ### Talk back to the agent
 After a pick, the group can say "no Japanese, closer to the city", "somewhere quieter" or "surprise us". The agent maps that onto Qloo:
@@ -48,7 +48,7 @@ A full agent decision measures about **$0.03–0.06** with Claude Sonnet 5.5: pr
 
 ### Does it matter? (live evaluation)
 
-Across 120 random groups on live Qloo data (two runs of 60; half dinner, half movie), the fair pick differed from the highest-average pick in **43%** of groups. Where it differed, it lifted the least-matched person with a preference by **+13.2 percentile points** (a median raw Qloo affinity gain of +0.015 to +0.019), at a cost of 6.9 points to the group average. Protecting only people who actually have a preference changed the pick in 17 of 120 groups. **37% of people were "flexible tonight"**: Qloo saw little difference between options for them, so the app doesn't present their noise-level differences as preferences. Method, both runs and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
+Across 120 random groups on live Qloo data (two runs of 60; half dinner, half movie), the fair pick differed from the highest-average pick in **40%** of groups. Where it differed, it lifted the least-matched person with a preference by **+14.1 percentile points** (a median raw Qloo affinity gain of +0.015 to +0.020), at a cost of 6.6 points to the group average. Protecting only people who actually have a preference changed the pick in 14 of 120 groups. **37% of people were "flexible tonight"**: Qloo saw little difference between options for them, so the app doesn't present their noise-level differences as preferences. Method, both runs and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ### The fairness rule
 
@@ -87,11 +87,7 @@ npm run test:smoke       # creates disposable local huddles in all three categor
 npm run check:setup      # reports missing configuration without printing secrets
 ```
 
-**Live verification (9 Oct 2026, hackathon API + Claude Sonnet 5.5, production):**
-- The demo huddle (dinner, Melbourne, "Keep it under $$$") made 5 Qloo calls: a group shortlist of 20 restaurants plus 4 per-member scorings.
-- The fair pick was **Archie's All Day** (Fitzroy), with a lowest taste match of 68%. The simple average picked **Chotto Motto**, where Josh's match drops to 58%.
-- The agent run took about 20 s, streamed step by step.
-- Movie and TV huddles were verified the same way.
+**Live verification (10 Oct 2026, hackathon API + Claude Sonnet 5.5, production):** the three-generations demo ("Grandma likes it calm. Under $$$.") put 21 restaurants on the table, 9 of them someone's personal top match. The fair pick was **The Moat** (Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%); a simple average picks Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. Claude compared Grandma Lan and Minh and described The Moat only with its Qloo tags (Intimate). 10 Qloo calls, $0.08 of Claude.
 
 In offline mode (no keys), rules pick The Green Fig: Josh's match is 46% there, versus 39% at the average pick.
 

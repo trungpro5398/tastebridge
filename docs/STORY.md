@@ -36,12 +36,12 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - Qloo sees Mai as flexible tonight: her scores barely differ between these options.
 - A simple average picks Kawa Sake Sushi Boat, where **Grandma Lan's match is 37%** (her 15th of 21 options).
 - TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
-- Claude's note stays honest: "No option was tagged calm, so I couldn't confirm the calm request."
-- 11 Qloo calls; Claude cost $0.05.
+- Claude compared the two people who disagree most: "Grandma Lan and Minh split sharply on several places, but both rate Roule Galette." It described The Moat only with its Qloo tags ("tagged Intimate").
+- 10 Qloo calls; Claude cost $0.08.
 
 ## How we built it
-- **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, re-plans when someone is left behind, and writes explanations from tool output only. Diet and budget constraints survive retries. `finalize` enforces the scorer's top-three order, so the model can't override the maths.
-- **Fairness:** raw affinities aren't comparable between people, so each member's scores become within-person percentiles over tonight's shortlist. The pick is the **maximin** option, with **Nash welfare** breaking ties. A mean-score baseline is shown for contrast.
+- **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, compares the two people who disagree most, re-plans once when the protected person is in their bottom half, and writes explanations from tool output only, with a plain-English reason on each step. Diet, budget and calm requests are enforced in code and survive retries; finalize rejects any ambience claim ("calm", "cozy") that the option's Qloo tags don't support. `finalize` enforces the scorer's top-three order, so the model can't override the maths.
+- **Fairness:** raw affinities aren't comparable between people, so each member's scores become within-person percentiles over tonight's shortlist. The pick is the **maximin** option over people who have a preference tonight; on near-ties (within 3 points) it prefers the option kindest to everyone, then **Nash welfare**. A mean-score baseline is shown for contrast.
 - **App:** Next.js 16, TypeScript and Tailwind, with Supabase (Postgres, row-level security, server-only access), deployed on Vercel. It is mobile-first with shareable links and huddle pages refresh automatically as friends join. Each huddle link unfurls in group chats with its own preview image showing the pick.
 - **Watch the agent work:** the decide endpoint streams each real tool step (tags → shortlist → per-member scoring → explanations) to the UI as it happens. There are no fake loading messages.
 - **Responsible cost:** Claude runs are capped per day and per hashed IP. Over budget, the app still answers using rule-based explanations, and saved results are reused while the group is unchanged.
@@ -56,9 +56,9 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 `scripts/evaluate.mts` runs random groups of 3–5 people (3 favourites each, drawn from 24 well-known titles and artists) through the same pipeline on **live Qloo data**, in rules mode with no LLM.
 
 Across **120 groups** in two runs of 60 (half dinner, half movie):
-- The fair pick differed from the highest-average pick in **43%** of groups (26 of 60 in each run).
-- Where it differed, the **least-matched person with a preference gained +13.2 percentile points**, while the group average dropped 6.9. In raw Qloo terms that person's affinity rose by a median of +0.015 to +0.019, which is 11–19% of their own spread across the shortlist: a real but modest gain, which is why the app also shows ranks ("20th of 24 options").
-- Protecting only people who actually have a preference changed the pick in **17 of 120** groups compared with plain maximin.
+- The fair pick differed from the highest-average pick in **40%** of groups (24 of 60 in each run).
+- Where it differed, the **least-matched person with a preference gained +14.1 percentile points**, while the group average dropped 6.6. In raw Qloo terms that person's affinity rose by a median of +0.015 to +0.020, which is 11–19% of their own spread across the shortlist: a real but modest gain, which is why the app also shows ranks ("20th of 24 options").
+- Protecting only people who actually have a preference changed the pick in **14 of 120** groups compared with plain maximin.
 - Putting everyone's own top matches on the table made fairness matter more often: on the same 60 groups, the old group-only shortlist differed in 37%.
 - **37% of people were "flexible tonight"**: Qloo's scores for them barely differed across options. TasteBridge shrinks their percentiles toward neutral, so noise never decides the evening or gets labelled as "the person we protected".
 

@@ -29,25 +29,26 @@ A spread of 0.02 turned into a 0–100% percentile is noise, not preference. So 
 
 ## Results
 
-Current pipeline (10 October 2026): each person's own top matches on the table, calm requests enforced, and maximin over **people with a preference tonight** (everyone if nobody has one).
+Current pipeline (10 October 2026): each person's own top matches on the table, calm requests enforced, maximin over **people with a preference tonight** (everyone if nobody has one), and near-ties within 3 points going to the option kindest to everyone.
 
 | Run | Groups | People flexible tonight | Fair pick ≠ average pick | Where they differ: gain for the least-matched person with a preference | Cost to the group average | Raw Qloo affinity gain for that person (median) | Pick changed vs plain maximin |
 |---|---|---|---|---|---|---|---|
-| seed 2026 | 60 (30 dinner, 30 movie) | 86 / 224 (38%) | 26 (43%) | **+14.5 pts** | −7.0 pts | +0.015 (19% of their spread) | 9 / 60 |
-| seed 7 | 60 (30 dinner, 30 movie) | 87 / 245 (36%) | 26 (43%) | **+11.9 pts** | −6.7 pts | +0.019 (11% of their spread) | 8 / 60 |
-| **both** | **120** | **173 / 469 (37%)** | **52 (43%)** | **+13.2 pts** | **−6.9 pts** | | **17 / 120** |
+| seed 2026 | 60 (30 dinner, 30 movie) | 86 / 224 (38%) | 24 (40%) | **+15.4 pts** | −6.5 pts | +0.015 (19% of their spread) | 7 / 60 |
+| seed 7 | 60 (30 dinner, 30 movie) | 87 / 245 (36%) | 24 (40%) | **+12.7 pts** | −6.7 pts | +0.020 (11% of their spread) | 7 / 60 |
+| **both** | **120** | **173 / 469 (37%)** | **48 (40%)** | **+14.1 pts** | **−6.6 pts** | | **14 / 120** |
 
 Earlier pipelines, same day, for comparison:
 
 | Pipeline | Run | Fair pick ≠ average | Gain | Cost | Pick changed vs plain maximin |
 |---|---|---|---|---|---|
+| Maximin over people with a preference, no near-tie rule | seeds 2026 + 7 (120) | 52 (43%) | +13.2 | −6.9 | 17 / 120 |
 | Own top matches; maximin over everyone | seeds 2026 + 7 (120) | 54 (45%) | +13.0 | −6.3 | 1 / 120 |
 | Group-blend shortlist only | seed 2026 (60) | 22 (37%) | +17.1 | −7.1 | 0 / 60 |
 
 **Reading.**
-- In about four groups in ten, the highest average leaves someone who cares well behind. When that happens, the fair pick lifts them by about 13 percentile points for a 7-point drop in the group average.
+- In four groups in ten, the fair pick differs from the highest average. When it does, it lifts the least-matched person who cares by about 14 percentile points for a 7-point drop in the group average.
 - **Percentiles vs raw scores.** Qloo affinities sit on a compressed scale. The protected person's raw affinity typically rises by 0.015–0.019, which is 11–19% of the range that person shows across tonight's shortlist. The percentages in the app are ranks within the shortlist, so the app also shows the rank directly ("20th of 24 options") and marks people whose whole range is small as *flexible tonight*.
-- **Why "people who care" matters.** About 37% of people are effectively indifferent across a shortlist. When their noise-level scores counted toward the minimum, they decided the winner in a few cases (1 of 120). Restricting maximin to people with a preference changes the pick in 17 of 120 groups, always in favour of someone with a clear preference.
+- **Why "people who care" matters.** About 37% of people are effectively indifferent across a shortlist. When their noise-level scores counted toward the minimum, they decided the winner in a few cases (1 of 120). Restricting maximin to people with a preference changes the pick in 14 of 120 groups, in favour of someone with a clear preference; the near-tie rule stops a one-point gain for them from pushing a flexible person far down.
 - **Why the shortlist change matters.** A shortlist built only from the blended group taste is made of compromises, so each person's scores are compressed and the average is rarely unfair. Adding each person's own top matches puts real alternatives on the table.
 - Maximin cannot lower the protected minimum by construction. The informative numbers are how often the decision changes, the cost to everyone else, and the raw size of the gain.
 
