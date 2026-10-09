@@ -36,8 +36,8 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - Qloo sees Mai as flexible tonight: her scores barely differ between these options.
 - A simple average picks Kawa Sake Sushi Boat, where **Grandma Lan's match is 37%** (her 15th of 21 options).
 - TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
-- Claude compared the two people who disagree most: "Grandma Lan and Minh split most: Ichigo suits Grandma Lan (83%) but not Minh (24%)." It described The Moat only with its Qloo tags ("tagged Intimate").
-- 10 Qloo calls; Claude cost $0.08.
+- Claude compared the two people who disagree most: "Grandma Lan and Minh split most on Ichigo (83% vs 24%) and Harley & Rose (17% vs 76%)." It described The Moat only with its Qloo tags ("tagged Intimate").
+- 10 Qloo calls; Claude cost $0.10.
 - **Talking back** ([live result](https://tastebridge-brown.vercel.app/h/i2r4eqpk)): the group asked "No Italian please, and somewhere quieter". Claude looked up Qloo's *Italian* and *Quiet* tags, excluded Italian, leaned quiet, rebuilt the shortlist (18 restaurants) and rescored everyone. The Moat was replaced by **Roule Galette**, with nobody with a clear preference below 59%. Because no option is tagged calm, the app says so and names the calmest close option: The Soup Place (Cozy), lowest match 52%. 12 Qloo calls, $0.09.
 
 ## How we built it
@@ -109,7 +109,7 @@ With no keys it runs fully offline on a fictional demo catalogue (clearly labell
 - **Consumers (free):** friends, couples and families. A link and a QR code; no accounts.
 - **Teams:** team dinners and offsites, where the quiet person's taste matters just as much and HR cares about inclusion.
 - **Platforms (API):** booking, ticketing and group-travel products can call `POST /api/v1/fair-pick` and get one fair pick with evidence. It is deterministic, costs a few Qloo calls, and needs no LLM. A per-call or per-booking fee fits naturally, and events and ticketing companies (think group outings to a show) are a direct fit.
-- **Unit cost:** a full agent decision costs about **$0.05–0.09 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
+- **Unit cost:** a full agent decision costs about **$0.05–0.10 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
 
 ## What's next
 Booking hand-off (tables and tickets) for platform partners, "veto" tokens, recalibrating the flexibility threshold from real `/impact` data, and a React Native app.
