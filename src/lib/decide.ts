@@ -417,6 +417,17 @@ export class DecisionSession {
       const who = expected[0].scores.filter((x) => !x.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
       return `error: ${who?.member_name ?? "someone"} is at ${pct(floor)} on the fairest option. Re-plan once for them first (find_tags for something their favourites suggest, group_candidates with prefer_tag_ids and a reason naming them, then score_for_members), then finalize on whichever shortlist protects them better.`;
     }
+    // "your best fit" is only true for the person whose #1 on tonight's list this option is
+    const ownTop = (memberName: string) => {
+      const m = this.huddle.members.find((x) => x.name === memberName);
+      if (!m) return undefined;
+      const mine = (r: RankedCandidate) => r.scores.find((s) => s.member_id === m.id)?.percentile ?? 0;
+      return [...this.ranked].sort((a, b) => mine(b) - mine(a))[0]?.entity.entity_id;
+    };
+    for (const [i, p] of picks.entries())
+      for (const m of p.per_member)
+        if (/\b(your (best|top|favou?rite|#1|number one)|best (fit|match) for you)\b/i.test(m.reason) && ownTop(m.member_name) !== expected[i].entity.entity_id)
+          return `error: for ${m.member_name}, ${expected[i].entity.name} is not their #1 on tonight's list (see members.own_top_match), so don't call it their best or top. Use their rank or taste match instead.`;
     for (const [i, p] of picks.entries()) {
       const tags = (expected[i].entity.tags ?? []).map((t) => t.name);
       const text = [p.headline, p.why_group, ...p.per_member.map((m) => m.reason)].join(" ");

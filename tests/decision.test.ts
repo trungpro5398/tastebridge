@@ -216,3 +216,18 @@ test("rules refinements never map a word to an unrelated tag", async () => {
   assert.deepEqual(opts.preferTags, []);
   assert.deepEqual(opts.avoidTags, []);
 });
+
+test("an explanation can't call an option someone's best unless it is their #1", async () => {
+  const session = new DecisionSession(huddle(""));
+  await session.generateCandidates({ priceMax: 4 });
+  await session.scoreMembers();
+  const [first] = session.toDecision("rules").picks;
+  const mine = (r: (typeof session.ranked)[number]) => r.scores.find((s) => s.member_id === "0")?.percentile ?? 0;
+  const isTop = [...session.ranked].sort((a, b) => mine(b) - mine(a))[0].entity.entity_id === first.entity_id;
+  const picks = session.toDecision("rules").picks.map((p, i) =>
+    i === 0 ? { ...p, per_member: p.per_member.map((m) => (m.member_name === "Friend 0" ? { ...m, reason: "It's your best fit." } : m)) } : p,
+  );
+  const out = session.finalize(picks, "t");
+  if (isTop) assert.equal(out, "saved");
+  else assert.match(out, /not their #1/);
+});
