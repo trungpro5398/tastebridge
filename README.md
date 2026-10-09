@@ -1,5 +1,7 @@
 # TasteBridge
 
+**Watch the 67-second walkthrough:** [docs/media/tastebridge-demo.mp4](docs/media/tastebridge-demo.mp4) (real production runs, no mock-ups).
+
 **Live:** https://tastebridge-brown.vercel.app
 
 **Decide together, fairly.** TasteBridge is an AI agent that helps a group of friends, a couple or a family pick *one* dinner spot, movie or show that everyone will enjoy, and explains the trade-off in plain words.
