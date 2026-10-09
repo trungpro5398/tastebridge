@@ -26,18 +26,24 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
   const avgId = decision.majority?.entity.entity_id;
   if (decision.majority && !options.some((o) => o.entity.entity_id === avgId)) options.push(decision.majority);
 
+  // Each option moves toward the people it suits better than its own average, and away from anyone it
+  // leaves behind. Evenly balanced options stay in the middle: that is the bridge.
+  const offset = (c: RankedCandidate) => {
+    const sats = people.map((p) => c.scores.find((x) => x.member_id === p.id)?.satisfaction ?? 0);
+    const mean = sats.reduce((a, b) => a + b, 0) / sats.length;
+    let dx = 0;
+    let dy = 0;
+    people.forEach((p, i) => {
+      dx += (sats[i] - mean) * (p.x - C);
+      dy += (sats[i] - mean) * (p.y - C);
+    });
+    return { dx: dx / R, dy: dy / R };
+  };
+  const spread = Math.max(0.25, ...options.map((c) => Math.hypot(offset(c).dx, offset(c).dy)));
   const place = (c: RankedCandidate) => {
-    let wx = 0;
-    let wy = 0;
-    let wt = 0;
-    for (const p of people) {
-      const s = c.scores.find((x) => x.member_id === p.id)?.satisfaction ?? 0;
-      const w = Math.max(0.02, s) ** 2; // squared so a strong fit pulls clearly harder than a weak one
-      wx += w * p.x;
-      wy += w * p.y;
-      wt += w;
-    }
-    return { x: wx / wt, y: wy / wt };
+    const { dx, dy } = offset(c);
+    const k = (R * 0.8) / spread; // largest imbalance reaches 80% of the way to a corner
+    return { x: C + dx * k, y: C + dy * k };
   };
   const role = (c: RankedCandidate) =>
     c.entity.entity_id === top.entity.entity_id ? "fair" : c.entity.entity_id === avgId ? "avg" : "other";
@@ -49,8 +55,8 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
       <figcaption>
         <h3 className="font-display text-lg font-semibold">Taste map: where the bridge is</h3>
         <p className="text-sm text-muted">
-          Each friend is a corner. Every option on tonight&apos;s shortlist sits closer to the people it suits. The fair
-          pick is the bridge: near the middle, leaving nobody far behind.
+          Each person is a corner. An option drifts toward the people it suits more than the others, and away from
+          anyone it leaves behind. Options that suit everyone evenly stay in the middle: that is the bridge.
         </p>
       </figcaption>
       <div className="relative mx-auto mt-3 max-w-[420px]">
