@@ -42,7 +42,9 @@ export default function ShortlistMap({ decision }: { decision: Decision }) {
         const label = role === "fair" ? "Fair pick: " : role === "avg" ? "Simple average: " : "";
         const tip = document.createElement("span");
         tip.textContent = `${label}${r.entity.name} (lowest match ${Math.round(r.min_satisfaction * 100)}%)`;
-        marker.bindTooltip(tip, { direction: "top", permanent: role !== "other" && located.length <= 12 });
+        // pinned labels only where there is room; on phones they show on tap
+        const wide = (el.current?.clientWidth ?? 0) >= 560;
+        marker.bindTooltip(tip, { direction: "top", permanent: wide && role !== "other" && located.length <= 12 });
       }
       map.fitBounds(L.latLngBounds(located.map((r) => [r.entity.lat!, r.entity.lon!] as [number, number])), {
         padding: [36, 36],

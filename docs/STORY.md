@@ -60,6 +60,13 @@ Across **60 groups** (30 dinner, 30 movie):
 
 Full method and caveats are in `docs/EVALUATION.md`.
 
+## Works wherever the judges are
+The same flow works outside Melbourne. A New York dinner group (*Succession*, Beyoncé, *Dune*) gets the Press Lounge, Battery Gardens and Katz's Delicatessen; Los Angeles gets In-N-Out, Catch and Nobu.
+- Malls, markets and hotels that carry a restaurant tag are excluded, and drink-first venues are dropped using Qloo's `primary_genre`.
+- The default city and the "where to watch" region come from the browser time zone.
+
+We reviewed the product by walking through it as a judge in New York, a friend opening the link on a phone, and the organiser after the result. The issues and fixes are in `docs/UX_REVIEW.md`.
+
 ## Challenges
 - **Comparable scores.** Affinity scales differ per person, and percentiles fixed that.
 - **Keeping the LLM honest.** The numbers come only from Qloo plus deterministic code. The model plans and explains, and finalisation rejects anything outside the scored ranking.
