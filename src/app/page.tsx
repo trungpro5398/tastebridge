@@ -4,10 +4,10 @@ import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
 const example = [
-  { name: "Bà Lan", v: 61 },
-  { name: "Minh", v: 48 },
+  { name: "Bà Lan", v: 65 },
+  { name: "Minh", v: 55 },
   { name: "Linh", v: 78 },
-  { name: "Mai", v: 56 },
+  { name: "Mai", v: 62 },
 ];
 
 const steps = [
@@ -85,8 +85,8 @@ export default function Home() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-muted">
-            A simple average would choose Republica St Kilda Beach, where Bà Lan drops to 10%. TasteBridge keeps
-            everyone at 48% or more.
+            A simple average would choose Republica St Kilda Beach, where Bà Lan drops to 19%. TasteBridge keeps
+            everyone at 55% or more.
           </p>
         </figure>
       </section>
