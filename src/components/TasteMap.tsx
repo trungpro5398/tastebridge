@@ -158,27 +158,29 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
           <span className="size-2.5 rounded-full border border-dashed border-[var(--muted)]" /> Flexible tonight
         </li>
       </ul>
-      <table className="sr-only">
-        <caption>Taste match per option and person</caption>
-        <thead>
-          <tr>
-            <th>Option</th>
-            {people.map((p) => (
-              <th key={p.id}>{p.name}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {options.map((c) => (
-            <tr key={c.entity.entity_id}>
-              <td>{c.entity.name}</td>
+      <div className="sr-only">
+        <table>
+          <caption>Taste match per option and person</caption>
+          <thead>
+            <tr>
+              <th>Option</th>
               {people.map((p) => (
-                <td key={p.id}>{pct(c.scores.find((s) => s.member_id === p.id)?.satisfaction ?? 0)}</td>
+                <th key={p.id}>{p.name}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {options.map((c) => (
+              <tr key={c.entity.entity_id}>
+                <td>{c.entity.name}</td>
+                {people.map((p) => (
+                  <td key={p.id}>{pct(c.scores.find((s) => s.member_id === p.id)?.satisfaction ?? 0)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

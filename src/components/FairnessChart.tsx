@@ -133,25 +133,27 @@ export default function FairnessChart({ decision }: { decision: Decision }) {
           <span className="size-2.5 rounded-full opacity-45" style={{ background: "var(--muted)" }} /> Other options
         </li>
       </ul>
-      <table className="sr-only">
-        <caption>Options by group average and lowest match</caption>
-        <thead>
-          <tr>
-            <th>Option</th>
-            <th>Group average</th>
-            <th>Lowest person</th>
-          </tr>
-        </thead>
-        <tbody>
-          {all.map((c) => (
-            <tr key={c.entity.entity_id}>
-              <td>{c.entity.name}</td>
-              <td>{pct(c.mean_satisfaction)}</td>
-              <td>{pct(c.min_satisfaction)}</td>
+      <div className="sr-only">
+        <table>
+          <caption>Options by group average and lowest match</caption>
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>Group average</th>
+              <th>Lowest person</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {all.map((c) => (
+              <tr key={c.entity.entity_id}>
+                <td>{c.entity.name}</td>
+                <td>{pct(c.mean_satisfaction)}</td>
+                <td>{pct(c.min_satisfaction)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

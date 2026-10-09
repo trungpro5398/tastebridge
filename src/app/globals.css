@@ -71,8 +71,3 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
-
-/* tables ignore the sr-only clip and widen the page on phones */
-table.sr-only {
-  display: block;
-}
