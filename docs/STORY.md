@@ -36,7 +36,7 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - Qloo sees Mai as flexible tonight: her scores barely differ between these options.
 - A simple average picks Kawa Sake Sushi Boat, where **Grandma Lan's match is 37%** (her 15th of 21 options).
 - TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
-- Claude compared the two people who disagree most: "Grandma Lan and Minh split most: Ichigo is 83% vs 24%, and Harley & Rose is 17% vs 76%." It described The Moat only with its Qloo tags ("tagged Intimate").
+- Claude compared the two people who disagree most: "Grandma Lan rates Ichigo at 83% while Linh is at 23%." It described The Moat only with its Qloo tags ("tagged Intimate and Quiet").
 - 10 Qloo calls; Claude cost $0.08.
 - **Talking back** ([live result](https://tastebridge-brown.vercel.app/h/i2r4eqpk)): the group asked "No Italian please, and somewhere quieter". Claude looked up Qloo's *Italian* and *Quiet* tags, excluded Italian, leaned quiet, rebuilt the shortlist (18 restaurants) and rescored everyone. The Moat was replaced by **Roule Galette**, with nobody with a clear preference below 59%. Because no option is tagged calm, the app says so and names the calmest close option: The Soup Place (Cozy), lowest match 52%. 12 Qloo calls, $0.09.
 

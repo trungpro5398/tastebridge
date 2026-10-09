@@ -87,7 +87,7 @@ npm run test:smoke       # creates disposable local huddles in all three categor
 npm run check:setup      # reports missing configuration without printing secrets
 ```
 
-**Live verification (10 Oct 2026, hackathon API + Claude Sonnet 5.5, production, [result](https://tastebridge-brown.vercel.app/h/i8iiiqdb)):** the three-generations demo ("Grandma likes it calm. Under $$$.") put 21 restaurants on the table, 9 of them brought by one person's own taste. The fair pick was **The Moat** (Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%); a simple average picks Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. Claude compared Grandma Lan and Minh ("Ichigo is 83% vs 24%") and described The Moat only with its Qloo tags (Intimate). 10 Qloo calls, $0.08 of Claude.
+**Live verification (10 Oct 2026, hackathon API + Claude Sonnet 5.5, production, [result](https://tastebridge-brown.vercel.app/h/i8iiiqdb)):** the three-generations demo ("Grandma likes it calm. Under $$$.") put 21 restaurants on the table, 9 of them brought by one person's own taste. The fair pick was **The Moat** (Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%); a simple average picks Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. Claude compared the two people who disagree most ("Grandma Lan rates Ichigo at 83% while Linh is at 23%") and described The Moat only with its Qloo tags (Intimate, Quiet). 10 Qloo calls, $0.08 of Claude.
 
 In offline mode (no keys), rules pick The Green Fig: Josh's match is 46% there, versus 39% at the average pick.
 
