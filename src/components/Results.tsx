@@ -151,7 +151,11 @@ function Compatibility({
       </div>
       <p className="mt-2 text-sm text-muted">
         How similarly you rank tonight&apos;s options (50% means unrelated tastes).{" "}
-        {c.score < 0.55 ? "With tastes this different, an average would leave someone out; that is what the fair pick is for." : "You overlap a lot, so the fair pick and the average often agree."}
+        {c.score < 0.5
+          ? "With tastes this different, an average tends to leave someone out; that is what the fair pick is for."
+          : c.score < 0.7
+            ? "Some overlap, but not everywhere, so the fair pick can differ from the average."
+            : "You overlap a lot, so the fair pick and the average usually agree."}
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <Pair p={c.closest} label="Taste twins" colorOfName={colorOfName} />
