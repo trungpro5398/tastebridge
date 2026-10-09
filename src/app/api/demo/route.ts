@@ -1,4 +1,4 @@
-import { QlooError, confidentMatch, qlooMode, searchEntities } from "@/lib/qloo";
+import { QlooError, confidentMatch, normaliseName, qlooMode, searchEntities } from "@/lib/qloo";
 import { addMember, createHuddle, kvGet, kvSet } from "@/lib/store";
 import { allow, ipHash, tooMany } from "@/lib/usage";
 import type { Entity, EntityType } from "@/lib/types";
@@ -34,14 +34,14 @@ const SCENARIOS: Record<"friends" | "family", Scenario> = {
     friends: [
       { name: "Bà Lan", favourites: [["Khánh Ly", AR], ["Trịnh Công Sơn", AR], ["The Scent of Green Papaya", M]] },
       { name: "Minh", favourites: [["Anthony Bourdain: Parts Unknown", TV], ["The Rolling Stones", AR], ["Heat", M]] },
-      { name: "Linh", favourites: [["The Great British Bake Off", TV], ["Celine Dion", AR], ["Pride and Prejudice", M]] },
+      { name: "Linh", favourites: [["The Great British Baking Show", TV], ["Celine Dion", AR], ["Pride and Prejudice", M]] },
       { name: "Mai", favourites: [["Spider-Man: Into the Spider-Verse", M], ["BTS", AR], ["Stranger Things", TV]] },
     ],
   },
 };
 
 type Resolved = { name: string; picks: Entity[] }[];
-const demoKey = (scenario: string) => `demo:v4:${scenario}:${qlooMode}`;
+const demoKey = (scenario: string) => `demo:v5:${scenario}:${qlooMode}`;
 
 /** Resolve demo favourites once (sequentially, through the rate limiter) and reuse them for a week. */
 async function demoFriends(scenario: keyof typeof SCENARIOS): Promise<Resolved> {
@@ -52,8 +52,10 @@ async function demoFriends(scenario: keyof typeof SCENARIOS): Promise<Resolved> 
   for (const f of friends) {
     const picks: Entity[] = [];
     for (const [n, t] of f.favourites) {
-      const hits = await searchEntities(n, [t], 3);
-      const hit = qlooMode === "live" ? hits.find((h) => confidentMatch(n, h.name)) : hits[0];
+      const hits = await searchEntities(n, [t], 5);
+      // prefer the exact title ("The Great British Bake Off", not a spin-off), then a confident match
+      const exact = hits.find((h) => normaliseName(h.name) === normaliseName(n));
+      const hit = qlooMode === "live" ? exact ?? hits.find((h) => confidentMatch(n, h.name)) : hits[0];
       if (hit) picks.push({ entity_id: hit.entity_id, name: hit.name, type: hit.type, image: hit.image, meta: hit.meta, tags: hit.tags?.slice(0, 8) });
     }
     out.push({ name: f.name, picks });

@@ -56,8 +56,9 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 `scripts/evaluate.mts` runs random groups of 3–5 people (3 favourites each, drawn from 24 well-known titles and artists) through the same pipeline on **live Qloo data**, in rules mode with no LLM.
 
 Across **120 groups** in two runs of 60 (half dinner, half movie):
-- The fair pick differed from the highest-average pick in **45%** of groups (50% and 40% in the two runs).
-- Where it differed, the **least-matched person gained +13.0 percentile points**, while the group average dropped 6.3.
+- The fair pick differed from the highest-average pick in **43%** of groups (26 of 60 in each run).
+- Where it differed, the **least-matched person with a preference gained +13.2 percentile points**, while the group average dropped 6.9. In raw Qloo terms that person's affinity rose by a median of +0.015 to +0.019, which is 11–19% of their own spread across the shortlist: a real but modest gain, which is why the app also shows ranks ("20th of 24 options").
+- Protecting only people who actually have a preference changed the pick in **17 of 120** groups compared with plain maximin.
 - Putting everyone's own top matches on the table made fairness matter more often: on the same 60 groups, the old group-only shortlist differed in 37%.
 - **37% of people were "flexible tonight"**: Qloo's scores for them barely differed across options. TasteBridge shrinks their percentiles toward neutral, so noise never decides the evening or gets labelled as "the person we protected".
 

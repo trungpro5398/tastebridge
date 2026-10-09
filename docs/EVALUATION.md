@@ -9,7 +9,7 @@
 - Each group runs through the app's pipeline in rules mode (no LLM):
   1. Qloo Insights builds a shortlist of up to 30 options: each person's own top 3 matches first ("everyone's taste on the table"), then options from the group's combined taste. Same filters for every call.
   2. One call per person re-scores that shortlist (`filter.results.entities` + `feature.explainability`).
-  3. Percentiles within the shortlist are **shrunk toward neutral for people whose Qloo scores barely differ** ("flexible tonight", see below).
+  3. Percentiles within the shortlist are **shrunk toward neutral for people whose Qloo scores barely differ** ("flexible tonight", see below), and the minimum is taken over people with a preference.
   4. Two picks are compared:
      - **average pick:** highest mean match;
      - **fair pick:** highest *lowest* match, with Nash welfare breaking ties.
@@ -29,25 +29,27 @@ A spread of 0.02 turned into a 0–100% percentile is noise, not preference. So 
 
 ## Results
 
-Current pipeline (each person's own top matches on the table), 10 October 2026:
+Current pipeline (10 October 2026): each person's own top matches on the table, calm requests enforced, and maximin over **people with a preference tonight** (everyone if nobody has one).
 
-| Run | Groups | People flexible tonight | Fair pick ≠ average pick | Where they differ: gain for the least-matched person | Where they differ: cost to the group average |
+| Run | Groups | People flexible tonight | Fair pick ≠ average pick | Where they differ: gain for the least-matched person with a preference | Cost to the group average | Raw Qloo affinity gain for that person (median) | Pick changed vs plain maximin |
+|---|---|---|---|---|---|---|---|
+| seed 2026 | 60 (30 dinner, 30 movie) | 86 / 224 (38%) | 26 (43%) | **+14.5 pts** | −7.0 pts | +0.015 (19% of their spread) | 9 / 60 |
+| seed 7 | 60 (30 dinner, 30 movie) | 87 / 245 (36%) | 26 (43%) | **+11.9 pts** | −6.7 pts | +0.019 (11% of their spread) | 8 / 60 |
+| **both** | **120** | **173 / 469 (37%)** | **52 (43%)** | **+13.2 pts** | **−6.9 pts** | | **17 / 120** |
+
+Earlier pipelines, same day, for comparison:
+
+| Pipeline | Run | Fair pick ≠ average | Gain | Cost | Pick changed vs plain maximin |
 |---|---|---|---|---|---|
-| seed 2026 | 60 (30 dinner, 30 movie) | 86 / 224 (38%) | 24 (40%) | **+15.4 pts** | −6.2 pts |
-| seed 7 | 60 (30 dinner, 30 movie) | 87 / 245 (36%) | 30 (50%) | **+11.1 pts** | −6.3 pts |
-| **both** | **120** | **173 / 469 (37%)** | **54 (45%)** | **+13.0 pts** | **−6.3 pts** |
-
-Previous pipeline (shortlist from the group's combined taste only), same day:
-
-| Run | Groups | People flexible tonight | Fair pick ≠ average pick | Gain | Cost |
-|---|---|---|---|---|---|
-| seed 2026 | 60 | 92 / 224 (41%) | 22 (37%) | +17.1 pts | −7.1 pts |
-| seed 7 | 20 | 31 / 87 (36%) | 6 (30%) | +21.3 pts | −8.6 pts |
+| Own top matches; maximin over everyone | seeds 2026 + 7 (120) | 54 (45%) | +13.0 | −6.3 | 1 / 120 |
+| Group-blend shortlist only | seed 2026 (60) | 22 (37%) | +17.1 | −7.1 | 0 / 60 |
 
 **Reading.**
-- With the current pipeline, the highest average leaves the least-matched person behind in almost half of groups. When that happens, the fair pick lifts them by about 13 percentile points for a 6-point drop in the group average.
-- **Why the shortlist change matters.** A shortlist built only from the blended group taste is made of compromises, so each person's Qloo scores across it are compressed and the average is rarely unfair. Adding each person's own top matches puts real alternatives on the table. Fairness then decides more often (45% vs about 35%), with a slightly smaller lift each time. On the same 60 groups (seed 2026), the share that differ went from 37% to 40%.
-- About 37% of people are effectively indifferent across a shortlist. Flexibility-awareness changed the winner against plain maximin in 1 of 120 groups. What it mainly changes is **who the app says it is protecting**: never someone whose "low score" is noise. It also stops the interface from presenting noise-level differences as strong preferences.
+- In about four groups in ten, the highest average leaves someone who cares well behind. When that happens, the fair pick lifts them by about 13 percentile points for a 7-point drop in the group average.
+- **Percentiles vs raw scores.** Qloo affinities sit on a compressed scale. The protected person's raw affinity typically rises by 0.015–0.019, which is 11–19% of the range that person shows across tonight's shortlist. The percentages in the app are ranks within the shortlist, so the app also shows the rank directly ("20th of 24 options") and marks people whose whole range is small as *flexible tonight*.
+- **Why "people who care" matters.** About 37% of people are effectively indifferent across a shortlist. When their noise-level scores counted toward the minimum, they decided the winner in a few cases (1 of 120). Restricting maximin to people with a preference changes the pick in 17 of 120 groups, always in favour of someone with a clear preference.
+- **Why the shortlist change matters.** A shortlist built only from the blended group taste is made of compromises, so each person's scores are compressed and the average is rarely unfair. Adding each person's own top matches puts real alternatives on the table.
+- Maximin cannot lower the protected minimum by construction. The informative numbers are how often the decision changes, the cost to everyone else, and the raw size of the gain.
 
 ## Limitations
 

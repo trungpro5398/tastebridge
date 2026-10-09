@@ -456,7 +456,7 @@ export default function Results({
           ))}
         </ol>
         <p className="mt-3 text-xs text-muted">
-          The pick maximises the lowest taste match in the group; Nash welfare breaks ties. Explanations:{" "}
+          The pick maximises the lowest taste match among people with a preference tonight; Nash welfare breaks ties. Explanations:{" "}
           {decision.mode.agent === "claude" ? "Claude, limited to what the tools returned" : "rule-based"}.
         </p>
       </details>
