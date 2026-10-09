@@ -1,5 +1,4 @@
-import Avatar from "@/components/Avatar";
-import { memberColor } from "@/lib/members";
+import { initials, memberColor } from "@/lib/members";
 import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
@@ -73,7 +72,7 @@ export default function Home() {
                 <p className="mt-0.5 min-h-[2.5rem] text-sm font-semibold leading-tight">{o.name}</p>
                 <div className="mt-3 flex h-28 items-end gap-2" role="img" aria-label={PEOPLE.map((n, i) => `${n} ${o.v[i]}%`).join(", ")}>
                   {o.v.map((v, i) => (
-                    <div key={PEOPLE[i]} className="flex flex-1 flex-col items-center justify-end gap-1">
+                    <div key={PEOPLE[i]} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                       <span className={`text-[11px] tabular-nums ${!o.fair && i === 0 ? "font-semibold text-foreground" : "text-muted"}`}>{v}</span>
                       <div
                         className="w-full rounded-t-md"
@@ -84,8 +83,8 @@ export default function Home() {
                 </div>
                 <div className="mt-1.5 flex gap-2">
                   {PEOPLE.map((n, i) => (
-                    <span key={n} className="flex flex-1 justify-center">
-                      <Avatar name={n} color={memberColor(i)} size="sm" />
+                    <span key={n} className="flex-1 text-center text-[11px] font-semibold" style={{ color: memberColor(i) }}>
+                      {initials(n)}
                     </span>
                   ))}
                 </div>
