@@ -105,6 +105,10 @@ export default function Home() {
 
       <section className="rounded-3xl bg-brand p-6 text-brand-ink sm:p-10">
         <h2 className="font-display text-3xl font-semibold tracking-tight">Why groups trust the pick</h2>
+        <p className="mt-2 max-w-2xl opacity-80">
+          We ran 60 random groups through live Qloo data. In 37% of them, a simple average would have picked something
+          one person matched poorly. TasteBridge&apos;s pick lifted that person by 21 points on average.
+        </p>
         <dl className="mt-6 grid gap-6 sm:grid-cols-3">
           {why.map((w) => (
             <div key={w.title}>

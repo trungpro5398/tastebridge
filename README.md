@@ -17,6 +17,10 @@ Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
    - It ranks options with a **fairness rule**, can retry with a larger shortlist or different soft preferences, optionally runs `compare_tastes` on two members, then calls `finalize`. Diet and budget requirements survive retries. Finalization enforces the scorer's top-three order.
 4. The result shows a taste-match bar per person, the favourites behind each match, a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
 
+### Does it matter? (live evaluation)
+
+Across 60 random groups on live Qloo data (30 dinner, 30 movie), the fair pick differed from the highest-average pick in **37%** of groups. Where it differed, it lifted the least-matched person by **+20.8 percentile points**, at a cost of 9.7 points to the group average. Method, a second run and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
+
 ### The fairness rule
 
 Raw affinities aren't comparable across people, so each person's scores are turned into a within-person percentile *s_i(c)* over tonight's shortlist.

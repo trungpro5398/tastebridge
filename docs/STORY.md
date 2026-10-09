@@ -48,6 +48,16 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - **Learning loop:** a one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
 - **Quality:** unit tests for minority protection, ties, constraints, empty results, invalid finalisation and Qloo request construction. CI runs on GitHub Actions.
 
+## Does fairness change anything? We measured it
+`scripts/evaluate.mts` runs random groups of 3–5 people (3 favourites each, drawn from 24 well-known titles and artists) through the same pipeline on **live Qloo data**, in rules mode with no LLM.
+
+Across **60 groups** (30 dinner, 30 movie):
+- The fair pick differed from the highest-average pick in **37%** of groups.
+- Where it differed, the **least-matched person gained +20.8 percentile points**, while the group average dropped 9.7.
+- A second run of 20 groups gave the same picture: 35% differed, +17.3 vs −8.7.
+
+Full method and caveats are in `docs/EVALUATION.md`.
+
 ## Challenges
 - **Comparable scores.** Affinity scales differ per person, and percentiles fixed that.
 - **Keeping the LLM honest.** The numbers come only from Qloo plus deterministic code. The model plans and explains, and finalisation rejects anything outside the scored ranking.
@@ -68,7 +78,7 @@ With no keys it runs fully offline on a fictional demo catalogue (clearly labell
 - The simple-average comparison is a mean-score baseline, not a real ballot.
 - With small shortlists (for example after strict diet filters), percentiles are coarse.
 - Free-text must-haves other than diet tags and dollar budgets are interpreted by the agent and should be checked. Opening hours and availability are not checked.
-- No user study yet. We have not measured decision time or post-dinner ratings.
+- No user study yet. The evaluation uses synthetic groups, and we have not measured decision time or post-dinner ratings.
 
 ## What's next
 Booking and maps links, "veto" tokens, learning from post-dinner ratings, and a React Native app.
