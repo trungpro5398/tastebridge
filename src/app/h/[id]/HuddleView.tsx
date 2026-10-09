@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { STEP_LABEL } from "@/lib/steps";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import FavouritePicker, { typeLabel } from "@/components/FavouritePicker";
@@ -117,6 +118,19 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
   const [refineText, setRefineText] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
+  const router = useRouter();
+  const [planning, setPlanning] = useState(false);
+  // same people next time; fairness carries over from tonight
+  const planNext = async () => {
+    setPlanning(true);
+    const res = await fetch(`/api/huddles/${huddle.id}/next`, { method: "POST" }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
+    if (res?.ok && data.id) router.push(`/h/${data.id}`);
+    else {
+      setPlanning(false);
+      setError(data.error ?? "Could not plan the next outing. Please try again.");
+    }
+  };
   const [copied, setCopied] = useState(false);
   const storageKey = `tb:${initial.id}`;
 
@@ -348,6 +362,14 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
                   </button>
                   <button onClick={() => decide(true)} className="rounded-xl border border-line bg-card px-4 py-2.5 text-sm hover:bg-soft">
                     Run again
+                  </button>
+                  <button
+                    onClick={planNext}
+                    disabled={planning}
+                    className="rounded-xl border border-line bg-card px-4 py-2.5 text-sm hover:bg-soft disabled:opacity-50"
+                    title="Same people and favourites. Whoever gave way tonight gets a little credit next time."
+                  >
+                    {planning ? "Setting up…" : "Plan the next outing"}
                   </button>
                 </div>
                 <form

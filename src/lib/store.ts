@@ -27,9 +27,18 @@ export async function createHuddle(input: {
   notes?: string;
   /** demo/test huddles are kept out of the impact numbers */
   isDemo?: boolean;
+  /** the group's previous outing */
+  parentId?: string;
 }): Promise<Huddle> {
-  const { isDemo, ...fields } = input;
-  const h: Huddle = { id: newHuddleId(), created_at: new Date().toISOString(), members: [], result: null, ...fields };
+  const { isDemo, parentId, ...fields } = input;
+  const h: Huddle = {
+    id: newHuddleId(),
+    created_at: new Date().toISOString(),
+    members: [],
+    result: null,
+    ...fields,
+    ...(parentId ? { parent_id: parentId } : {}),
+  };
   if (!sb) {
     mem.set(h.id, h);
     return h;
@@ -40,6 +49,7 @@ export async function createHuddle(input: {
     kind: h.kind,
     location: h.location ?? null,
     notes: h.notes ?? null,
+    parent_id: parentId ?? null,
     // anything not created on the production deployment (local dev, smoke tests) counts as test data
     is_demo: !!isDemo || process.env.VERCEL_ENV !== "production",
   });
@@ -52,13 +62,54 @@ export async function getHuddle(id: string): Promise<Huddle | null> {
   // never select members.edit_token: this object is returned to anyone with the link
   const { data, error } = await sb
     .from("huddles")
-    .select("id, title, kind, location, notes, result, created_at, members(id, name, picks, joined_at)")
+    .select("id, title, kind, location, notes, result, created_at, parent_id, members(id, name, picks, joined_at)")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   const members = ((data.members ?? []) as Member[]).sort((a, b) => a.joined_at.localeCompare(b.joined_at));
-  return { ...data, location: data.location ?? undefined, notes: data.notes ?? undefined, members } as Huddle;
+  return {
+    ...data,
+    location: data.location ?? undefined,
+    notes: data.notes ?? undefined,
+    parent_id: data.parent_id ?? undefined,
+    members,
+  } as Huddle;
+}
+
+/** The group's earlier outings, newest first (up to three), for fairness that carries over. */
+export async function getHistory(parentId?: string): Promise<{ id: string; result: Decision | null }[]> {
+  const out: { id: string; result: Decision | null }[] = [];
+  let id = parentId;
+  while (id && out.length < 3) {
+    if (!sb) {
+      const h = mem.get(id);
+      if (!h) break;
+      out.push({ id, result: h.result ?? null });
+      id = h.parent_id;
+      continue;
+    }
+    const { data, error } = await sb.from("huddles").select("id, parent_id, result").eq("id", id).maybeSingle();
+    if (error || !data) break;
+    out.push({ id: data.id, result: (data.result as Decision | null) ?? null });
+    id = data.parent_id ?? undefined;
+  }
+  return out;
+}
+
+/** "Plan the next outing": same people, favourites and private requests, linked to this huddle. */
+export async function createNextHuddle(id: string): Promise<string | null> {
+  const prev = await getHuddle(id);
+  if (!prev) return null;
+  const avoids = await getPrivateAvoids(id);
+  let isDemo = process.env.VERCEL_ENV !== "production";
+  if (sb) {
+    const { data } = await sb.from("huddles").select("is_demo").eq("id", id).maybeSingle();
+    isDemo = isDemo || !!data?.is_demo;
+  }
+  const next = await createHuddle({ title: prev.title, kind: prev.kind, location: prev.location, notes: prev.notes, isDemo, parentId: id });
+  for (const m of prev.members) await addMember(next.id, m.name, m.picks, avoids[m.id]);
+  return next.id;
 }
 
 const memAvoids = ((globalThis as unknown as { __avoids?: Map<string, string> }).__avoids ??= new Map());

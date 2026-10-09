@@ -2,7 +2,8 @@ import { after } from "next/server";
 import { agentEnabled, decide } from "@/lib/agent";
 import { ConstraintError, type RefineContext, type Step } from "@/lib/decide";
 import { QlooError, withQlooLog } from "@/lib/qloo";
-import { getHuddle, getPrivateAvoids, isDeciding, saveDecision, setDeciding } from "@/lib/store";
+import { carriedOver } from "@/lib/fairness";
+import { getHistory, getHuddle, getPrivateAvoids, isDeciding, saveDecision, setDeciding } from "@/lib/store";
 import type { Decision, Huddle } from "@/lib/types";
 import { ipHash, reserveAgentRun } from "@/lib/usage";
 
@@ -55,6 +56,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/huddles/[id
   // private "not tonight" requests are attached server-side only; the result never says who asked
   const avoids = await getPrivateAvoids(id);
   huddle.members = huddle.members.map((m) => (avoids[m.id] ? { ...m, avoid: avoids[m.id] } : m));
+  // fairness carries over: who gave way on this group's earlier outings
+  if (huddle.parent_id) huddle.carried = carriedOver(await getHistory(huddle.parent_id));
 
   const body = (await request.json().catch(() => ({}))) as { force?: unknown; refine?: unknown };
   const refine = typeof body.refine === "string" ? body.refine.trim().slice(0, 160) : "";

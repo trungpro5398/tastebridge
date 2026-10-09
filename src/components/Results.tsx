@@ -320,6 +320,15 @@ export default function Results({
             )}
           </div>
           <p className="max-w-prose">{top.p.why_group}</p>
+          {decision.carried_over && (
+            <p className="max-w-prose rounded-xl bg-accent/15 px-3 py-2 text-sm">
+              Fairness carries over from last time:{" "}
+              {decision.carried_over
+                .map((c) => `${c.member_name} gave way at ${c.previous_pick} (${pct(c.previous_match)})`)
+                .join("; ")}
+              , so tonight leans their way a little.
+            </p>
+          )}
           {decision.private_exclusions && (
             <p className="text-sm text-muted">
               Private &ldquo;not tonight&rdquo; requests honoured: no {decision.private_exclusions.join(", no ")}. Who asked

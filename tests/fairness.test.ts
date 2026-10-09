@@ -147,3 +147,28 @@ test("a one-point gain for people who care can't push a flexible person far down
   // a real gain for someone who cares still wins
   assert.equal(fairOrder([opt("soup", 0.74, 0.43), opt("santucci", 0.52, 0.49)])[0].entity.entity_id, "soup");
 });
+
+test("someone who gave way last time gets a capped credit that can tip a close call", async () => {
+  const { carriedOver, rankFairly } = await import("../src/lib/fairness");
+  const sc = (id: string, sat: number) => ({ member_id: id, member_name: id.toUpperCase(), affinity: 0, satisfaction: sat, because: [] });
+  const prev = {
+    result: {
+      picks: [{ entity_id: "old" }],
+      ranked: [{ entity: entity("old"), scores: [sc("a", 0.8), sc("b", 0.3)], min_satisfaction: 0.3, mean_satisfaction: 0, nash: 0 }],
+    },
+  } as never;
+  const carried = carriedOver([prev]);
+  assert.deepEqual(carried.map((c) => c.member_name), ["B"]);
+  assert.ok(carried[0].credit > 0 && carried[0].credit <= 0.15);
+  // tonight: x suits a a little more, y suits b a little more; without history x wins, with b's credit y wins
+  const shortlist = ["x", "y", "z"].map((id) => entity(id));
+  const two: Member[] = ["a", "b"].map((id) => ({ id, name: id.toUpperCase(), picks: [], joined_at: "" }));
+  const perMember = {
+    a: [entity("x", 0.9), entity("y", 0.6), entity("z", 0.1)],
+    b: [entity("x", 0.6), entity("y", 0.9), entity("z", 0.1)],
+  };
+  const plain = rankFairly(shortlist, two, perMember).ranked[0].entity.entity_id;
+  const leaning = rankFairly(shortlist, two, perMember, { b: carried[0].credit }).ranked[0].entity.entity_id;
+  assert.equal(leaning, "y");
+  assert.ok(plain === "x" || plain === "y");
+});

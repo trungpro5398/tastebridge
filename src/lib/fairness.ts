@@ -61,6 +61,8 @@ export function rankFairly(
   shortlist: InsightEntity[],
   members: Member[],
   perMember: Record<string, InsightEntity[]>,
+  /** member_id -> credit from giving way on earlier outings (0–0.15) */
+  credits: Record<string, number> = {},
 ): { ranked: RankedCandidate[]; majority: RankedCandidate | null } {
   if (!shortlist.length || !members.length) return { ranked: [], majority: null };
 
@@ -98,6 +100,10 @@ export function rankFairly(
       entity,
       scores,
       min_satisfaction: Math.min(...(cared.length ? cared : sats)),
+      // someone who gave way last time counts as a little worse off tonight, so the floor leans their way
+      debt_floor: Math.min(
+        ...(cared.length ? scores.filter((x) => !x.flexible) : scores).map((x) => x.satisfaction - (credits[x.member_id] ?? 0)),
+      ),
       min_all: Math.min(...sats),
       mean_satisfaction: +(sats.reduce((a, b) => a + b, 0) / sats.length).toFixed(3),
       nash: +sats.reduce((p, s) => p * (EPS + s), 1).toFixed(6),
@@ -123,12 +129,13 @@ export function fairOrder(options: RankedCandidate[]): RankedCandidate[] {
   const rest = [...options];
   const out: RankedCandidate[] = [];
   while (rest.length) {
-    const best = Math.max(...rest.map((r) => r.min_satisfaction));
-    const near = rest.filter((r) => r.min_satisfaction >= best - FLOOR_TIE - 1e-9);
+    const floor = (r: RankedCandidate) => r.debt_floor ?? r.min_satisfaction;
+    const best = Math.max(...rest.map(floor));
+    const near = rest.filter((r) => floor(r) >= best - FLOOR_TIE - 1e-9);
     near.sort(
       (a, b) =>
         (b.min_all ?? b.min_satisfaction) - (a.min_all ?? a.min_satisfaction) ||
-        b.min_satisfaction - a.min_satisfaction ||
+        floor(b) - floor(a) ||
         b.nash - a.nash,
     );
     out.push(near[0]);
@@ -195,4 +202,34 @@ export function groupCompatibility(ranked: RankedCandidate[]): Compatibility | u
   const last = sorted.at(-1);
   const furthest = last && last !== closest && last.r < TWINS_FROM ? last : undefined;
   return { score: +((mean + 1) / 2).toFixed(2), pairs, closest, furthest };
+}
+
+/** Credit is half of how far below 65% someone was on an earlier pick, halved again per older outing, capped at 15 points. */
+export const DEBT_BELOW = 0.65;
+export const DEBT_CAP = 0.15;
+
+/**
+ * Who gave way on the group's earlier outings (newest first). Flexible people never earn credit:
+ * they didn't really give anything up.
+ */
+export function carriedOver(history: { result?: import("./types").Decision | null }[]): import("./types").CarriedOver[] {
+  const out = new Map<string, import("./types").CarriedOver>();
+  history.slice(0, 3).forEach((h, age) => {
+    const d = h.result;
+    const pick = d?.ranked.find((r) => r.entity.entity_id === d.picks[0]?.entity_id);
+    if (!pick) return;
+    for (const s of pick.scores) {
+      if (s.flexible || s.satisfaction >= DEBT_BELOW) continue;
+      const credit = ((DEBT_BELOW - s.satisfaction) / 2) * 0.5 ** age;
+      const prev = out.get(s.member_name);
+      const total = Math.min(DEBT_CAP, (prev?.credit ?? 0) + credit);
+      out.set(s.member_name, {
+        member_name: s.member_name,
+        previous_pick: prev?.previous_pick ?? pick.entity.name,
+        previous_match: prev?.previous_match ?? s.satisfaction,
+        credit: +total.toFixed(3),
+      });
+    }
+  });
+  return [...out.values()].filter((c) => c.credit >= 0.02);
 }

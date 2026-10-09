@@ -67,7 +67,14 @@ export type Huddle = {
   /** a decision is being computed right now (another viewer pressed the button) */
   deciding?: boolean;
   feedback?: { q?: "worked" | "clear" | "went"; a?: "yes" | "no"; vote?: "up" | "down"; at: string }[];
+  /** the group's previous outing, when this huddle was planned as "the next one" */
+  parent_id?: string;
+  /** server-only: who gave way on earlier outings (filled by the decide route) */
+  carried?: CarriedOver[];
 };
+
+/** Someone who gave way on an earlier outing, and the small credit that carries into tonight. */
+export type CarriedOver = { member_name: string; previous_pick: string; previous_match: number; credit: number };
 
 export type MemberScore = {
   member_id: string;
@@ -96,6 +103,8 @@ export type RankedCandidate = {
   min_satisfaction: number;
   /** lowest taste match over everyone, flexible members included */
   min_all?: number;
+  /** the floor after carried-over credit (used for ordering; equals min_satisfaction without history) */
+  debt_floor?: number;
   mean_satisfaction: number;
   nash: number;
 };
@@ -145,6 +154,8 @@ export type Decision = {
   calm_alternative?: { name: string; tags: string[]; lowest_match: number };
   /** what the group's private "not tonight" requests excluded (never who asked) */
   private_exclusions?: string[];
+  /** fairness carried over from the group's earlier outings */
+  carried_over?: CarriedOver[];
   /** Claude tokens spent on this decision */
   agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };

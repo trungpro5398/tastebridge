@@ -340,7 +340,13 @@ export class DecisionSession {
       ),
     );
     this.perMember = Object.fromEntries(results);
-    const { ranked, majority } = rankFairly(this.shortlist, this.huddle.members, this.perMember);
+    const credits = Object.fromEntries(
+      (this.huddle.carried ?? []).flatMap((c) => {
+        const m = this.huddle.members.find((x) => x.name === c.member_name);
+        return m ? [[m.id, c.credit]] : [];
+      }),
+    );
+    const { ranked, majority } = rankFairly(this.shortlist, this.huddle.members, this.perMember, credits);
     const before = this.lastTop;
     this.ranked = ranked;
     this.majority = majority;
@@ -499,6 +505,7 @@ export class DecisionSession {
       shortlist_size: this.ranked.length,
       calm_alternative: this.calmAlternative(),
       private_exclusions: this.privateExclusions.length ? this.privateExclusions : undefined,
+      carried_over: this.huddle.carried?.length ? this.huddle.carried : undefined,
       personal_top: Object.fromEntries(
         this.huddle.members.map((m) => {
           const best = [...this.ranked].sort(

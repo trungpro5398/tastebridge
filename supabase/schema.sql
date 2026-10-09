@@ -68,3 +68,6 @@ create unique index if not exists feedback_once on feedback(huddle_id, q, ip_has
 
 -- Private "not tonight" per member (server-only; never selected in public reads).
 alter table members add column if not exists avoid text;
+
+-- A follow-up outing points at the previous one, so fairness can carry over between decisions.
+alter table huddles add column if not exists parent_id text;
