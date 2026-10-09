@@ -1,6 +1,6 @@
 # TasteBridge
 
-**Watch the 67-second walkthrough:** [docs/media/tastebridge-demo.mp4](docs/media/tastebridge-demo.mp4) (real production runs, no mock-ups).
+**Watch the 80-second walkthrough:** [docs/media/tastebridge-demo.mp4](docs/media/tastebridge-demo.mp4) (real production runs, no mock-ups).
 
 **Live:** https://tastebridge-brown.vercel.app
 
