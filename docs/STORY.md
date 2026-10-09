@@ -38,6 +38,7 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
 - Claude compared the two people who disagree most: "Grandma Lan and Minh split sharply on several places, but both rate Roule Galette." It described The Moat only with its Qloo tags ("tagged Intimate").
 - 10 Qloo calls; Claude cost $0.08.
+- **Talking back** ([live result](https://tastebridge-brown.vercel.app/h/8nwixyna)): the group asked "No Italian please, and somewhere quieter". Claude looked up Qloo's *Italian* and *Quiet* tags, excluded Italian, leaned quiet, rebuilt the shortlist (18 restaurants) and rescored everyone. The Moat was replaced by **Roule Galette**, with nobody with a clear preference below 59%. Its change note stays honest: "No option on this list is tagged quiet or calm." 12 Qloo calls, $0.06.
 
 ## How we built it
 - **Agent:** Claude (Anthropic TypeScript SDK tool runner) with five Zod-typed tools: `find_tags`, `group_candidates`, `score_for_members`, `compare_tastes`, `finalize`. The agent chooses filters, compares the two people who disagree most, re-plans once when the protected person is in their bottom half, and writes explanations from tool output only, with a plain-English reason on each step. Diet, budget and calm requests are enforced in code and survive retries; finalize rejects any ambience claim ("calm", "cozy") that the option's Qloo tags don't support. `finalize` enforces the scorer's top-three order, so the model can't override the maths.

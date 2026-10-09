@@ -255,7 +255,7 @@ export class DecisionSession {
     this.picks = null;
     this.tradeoffNote = "";
     this.changeNote = "";
-    const label = (ids: string[]) => ids.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")).join(", ");
+    const label = (ids: string[]) => [...new Set(ids.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")))].join(", ");
     const noun = isPlace ? "restaurants" : this.huddle.kind === "movie" ? "films" : "shows";
     const musts = tags.filter((t) => t !== DINNER_TAG);
     const leaning = prefer.filter((t) => !(calm && CALM_PREFER.includes(t)));
