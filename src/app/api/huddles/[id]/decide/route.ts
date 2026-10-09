@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { agentEnabled, decide } from "@/lib/agent";
-import { ConstraintError, type Step } from "@/lib/decide";
+import { ConstraintError, type RefineContext, type Step } from "@/lib/decide";
 import { QlooError, withQlooLog } from "@/lib/qloo";
 import { getHuddle, isDeciding, saveDecision, setDeciding } from "@/lib/store";
 import type { Decision, Huddle } from "@/lib/types";
@@ -10,7 +10,12 @@ export const maxDuration = 120;
 
 type Failure = { error: string; status: number };
 
-async function run(huddle: Huddle, request: Request, onStep?: (s: Step) => void): Promise<Decision | Failure> {
+async function run(
+  huddle: Huddle,
+  request: Request,
+  onStep?: (s: Step) => void,
+  ctx: RefineContext = {},
+): Promise<Decision | Failure> {
   let allowAgent = agentEnabled();
   let skipReason: string | undefined;
   if (allowAgent) {
@@ -19,7 +24,7 @@ async function run(huddle: Huddle, request: Request, onStep?: (s: Step) => void)
     skipReason = budget.reason;
   }
   try {
-    const { result, calls } = await withQlooLog(() => decide(huddle, { onStep, allowAgent, skipReason }));
+    const { result, calls } = await withQlooLog(() => decide(huddle, { onStep, allowAgent, skipReason, ...ctx }));
     if (!result.ranked.length) return { error: "No candidates matched. Try fewer constraints.", status: 422 };
     const decision = { ...result, qloo_calls: calls };
     await saveDecision(huddle.id, decision);
@@ -48,10 +53,20 @@ export async function POST(request: Request, ctx: RouteContext<"/api/huddles/[id
   if (huddle.members.length < 2)
     return Response.json({ error: "Need at least 2 people to make a group decision" }, { status: 400 });
 
-  const body = (await request.json().catch(() => ({}))) as { force?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { force?: unknown; refine?: unknown };
+  const refine = typeof body.refine === "string" ? body.refine.trim().slice(0, 160) : "";
+  // A follow-up request ("somewhere quieter") re-plans from the current pick and keeps earlier requests.
+  const prev = huddle.result;
+  const prevTop = prev?.picks[0] && prev.ranked.find((r) => r.entity.entity_id === prev.picks[0].entity_id);
+  const refineCtx: RefineContext = refine
+    ? {
+        refinements: [...(prev?.refinements ?? []), refine].slice(-4),
+        previous: prevTop ? { entity_id: prevTop.entity.entity_id, name: prevTop.entity.name } : undefined,
+      }
+    : {};
   const stream = request.headers.get("accept")?.includes("application/x-ndjson");
 
-  if (huddle.result && body.force !== true) {
+  if (huddle.result && body.force !== true && !refine) {
     if (!stream) return Response.json(huddle.result);
     return new Response(JSON.stringify({ type: "result", decision: huddle.result, cached: true }) + "\n", {
       headers: { "content-type": "application/x-ndjson" },
@@ -66,7 +81,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/huddles/[id
   await setDeciding(id, true);
 
   if (!stream) {
-    const out = await run(huddle, request).finally(() => setDeciding(id, false));
+    const out = await run(huddle, request, undefined, refineCtx).finally(() => setDeciding(id, false));
     return "error" in out ? Response.json({ error: out.error }, { status: out.status }) : Response.json(out);
   }
 
@@ -89,7 +104,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/huddles/[id
       open = false;
     }
   };
-  const work = run(huddle, request, (step) => send({ type: "step", ...step }))
+  const work = run(huddle, request, (step) => send({ type: "step", ...step }), refineCtx)
     .finally(() => setDeciding(id, false))
     .then((out) => {
       send("error" in out ? { type: "error", ...out } : { type: "result", decision: out });

@@ -119,6 +119,44 @@ export default function Home() {
         </dl>
       </section>
 
+      <section className="grid gap-8 sm:grid-cols-[1fr_1.1fr] sm:items-center">
+        <div>
+          <h2 className="font-display text-3xl font-semibold tracking-tight">For teams and platforms</h2>
+          <p className="mt-2 text-muted">
+            Team dinners, offsites, group trips and shared nights out have the same problem at a bigger scale. Booking,
+            ticketing and travel platforms can call the same fair-pick engine directly: no LLM, a few Qloo calls, and
+            every result comes with its evidence.
+          </p>
+          <ul className="mt-4 space-y-1.5 text-sm">
+            <li>Team-dinner and offsite tools: one venue the whole team can live with</li>
+            <li>Ticketing and events: shows a group of friends will all enjoy</li>
+            <li>Group travel: restaurants and activities for mixed-taste groups</li>
+          </ul>
+          <a
+            href="https://github.com/trungpro5398/tastebridge/blob/main/docs/API.md"
+            className="mt-4 inline-block font-medium text-brand underline-offset-4 hover:underline"
+          >
+            Read the API docs
+          </a>
+        </div>
+        <pre className="overflow-x-auto rounded-3xl bg-foreground p-5 text-xs leading-relaxed text-background">
+{`POST /api/v1/fair-pick
+{
+  "kind": "place",
+  "location": "Melbourne",
+  "members": [
+    { "name": "Ana", "favourites": ["Amélie"] },
+    { "name": "Ben", "favourites": ["John Wick"] }
+  ]
+}
+
+→ { "pick": { "name": "Archie's All Day",
+              "lowest_match": 0.58, ... },
+    "simple_average_pick": { ... },
+    "provenance": { "qloo": "live", ... } }`}
+        </pre>
+      </section>
+
       <section id="start" className="scroll-mt-6">
         <h2 className="font-display text-3xl font-semibold tracking-tight">Start a huddle</h2>
         <p className="mt-1 text-muted">Takes ten seconds. You&apos;ll get a link and a QR code to share.</p>

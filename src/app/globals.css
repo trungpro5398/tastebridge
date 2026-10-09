@@ -13,6 +13,9 @@
   --accent-ink: #3a2600;
   --soft: #f1edf6;
   --good: #1b7f6b;
+  /* chart marks (validated: lightness band, CVD separation, 3:1 vs surface) */
+  --chart-fair: #7b3fb0;
+  --chart-avg: #c27c0e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,6 +31,8 @@
     --accent-ink: #2b1c00;
     --soft: #261e33;
     --good: #5ccfb4;
+    --chart-fair: #9a6fe0;
+    --chart-avg: #c2821f;
   }
 }
 

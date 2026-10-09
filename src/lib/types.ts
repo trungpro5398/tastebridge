@@ -26,6 +26,12 @@ export type Entity = {
   meta?: string;
   /** full street address (places), for map links */
   address?: string;
+  /** coordinates (places), for the map */
+  lat?: number;
+  lon?: number;
+  website?: string;
+  /** Qloo marks permanently closed venues */
+  closed?: boolean;
 };
 
 /** A candidate as returned by /v2/insights, plus explainability. */
@@ -104,4 +110,15 @@ export type Decision = {
   trace: { tool: string; summary: string }[];
   /** redacted log of the Qloo requests behind this decision */
   qloo_calls?: QlooCall[];
+  /** follow-up requests from the group that shaped this run, oldest first */
+  refinements?: string[];
+  previous_pick?: string;
+  /** what changed versus the previous pick, and why */
+  change_note?: string;
+  /** ready-to-send message for the group chat */
+  group_message?: string;
+  /** how alike the group's tastes are across the shortlist */
+  compatibility?: import("./fairness").Compatibility;
+  /** Claude tokens spent on this decision */
+  agent_usage?: { calls: number; input: number; cacheRead: number; cacheWrite: number; output: number; usd: number; model: string };
 };

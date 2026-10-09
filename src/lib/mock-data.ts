@@ -80,12 +80,31 @@ const rows: Row[] = [
   ["mock-pl-18", "Mercado Rojo", "urn:entity:place", T("latin live-music loud feel-good vegetarian-friendly"), "Fitzroy · $$"],
 ];
 
-export const MOCK_ENTITIES: Entity[] = rows.map(([entity_id, name, type, tags, meta]) => ({
-  entity_id,
-  name,
-  type,
-  meta,
-  tags: tags.map((t) => ({ id: `urn:tag:mock:${t}`, name: t })),
-}));
+/** Approximate suburb centres so the offline demo can draw a map. */
+const SUBURB: Record<string, [number, number]> = {
+  Footscray: [-37.8, 144.8996],
+  Carlton: [-37.8001, 144.9671],
+  CBD: [-37.8136, 144.9631],
+  Fitzroy: [-37.7986, 144.978],
+  Richmond: [-37.8183, 145.0018],
+  Southbank: [-37.8226, 144.9643],
+  Brunswick: [-37.767, 144.9619],
+  Collingwood: [-37.8022, 144.9876],
+  Dandenong: [-37.9875, 145.2149],
+  "St Kilda": [-37.8676, 144.9809],
+};
+
+export const MOCK_ENTITIES: Entity[] = rows.map(([entity_id, name, type, tags, meta]) => {
+  const at = type === "urn:entity:place" ? SUBURB[meta?.split(" · ")[0] ?? ""] : undefined;
+  const jitter = (s: string) => ((s.charCodeAt(s.length - 1) % 7) - 3) * 0.0012;
+  return {
+    entity_id,
+    name,
+    type,
+    meta,
+    tags: tags.map((t) => ({ id: `urn:tag:mock:${t}`, name: t })),
+    ...(at ? { lat: at[0] + jitter(entity_id), lon: at[1] - jitter(name) } : {}),
+  };
+});
 
 export const MOCK_BY_ID = new Map(MOCK_ENTITIES.map((e) => [e.entity_id, e]));

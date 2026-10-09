@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DecisionSession, decideWithRules, parsePrice } from "../src/lib/decide";
+import { DecisionSession, decideWithRules, parsePrice, refinementsByRules, withinRadius } from "../src/lib/decide";
 import { MOCK_ENTITIES } from "../src/lib/mock-data";
 import { JoinHuddle } from "../src/app/api/schemas";
 import type { Huddle } from "../src/lib/types";
@@ -100,4 +100,33 @@ test("join schema accepts a live Qloo search result with many tags and a long im
     tags: Array.from({ length: 30 }, (_, i) => ({ id: `urn:tag:keyword:media:k${i}`, name: `Keyword ${i}` })),
   };
   assert.equal(JoinHuddle.safeParse({ name: "Mai", picks: [pick] }).success, true);
+});
+
+test("rules understand follow-up requests: avoid, closer, cheaper, surprise", async () => {
+  const s = new DecisionSession(huddle("Keep it under $$$"));
+  const opts = await refinementsByRules(s, ["no japanese, closer", "cheaper", "Surprise us"]);
+  assert.ok(opts.avoidTags?.includes("urn:tag:mock:japanese"));
+  assert.equal(opts.maxKm, 5);
+  assert.equal(opts.priceMax, 1);
+  assert.equal(opts.popularityMax, 0.6);
+});
+
+test("a refined run avoids the excluded tag and reports what changed", async () => {
+  const before = await decideWithRules(huddle(""));
+  const prev = before.ranked[0].entity;
+  const after = await decideWithRules(huddle(""), undefined, undefined, {
+    refinements: ["no cozy"],
+    previous: { entity_id: prev.entity_id, name: prev.name },
+  });
+  assert.ok(after.ranked.every((r) => !r.entity.tags?.some((t) => t.name === "cozy")));
+  assert.deepEqual(after.refinements, ["no cozy"]);
+  assert.match(after.change_note ?? "", /Changed from|still fits best/);
+});
+
+test("distance filter drops venues far from where the shortlist clusters", () => {
+  const near = (i: number) => ({ id: i, lat: -37.81 + i * 0.002, lon: 144.96 });
+  const items = [near(0), near(1), near(2), near(3), { id: 9, lat: -37.75, lon: 145.45 }];
+  const { kept, droppedFar } = withinRadius(items, 15);
+  assert.equal(droppedFar, 1);
+  assert.ok(kept.every((k) => k.id !== 9));
 });

@@ -55,3 +55,15 @@ test("highlights keep meaningful Qloo tags and drop noise", async () => {
   ];
   assert.deepEqual(highlights({ tags }), ["Mushroom burger", "Global fusion", "Family friendly"]);
 });
+
+test("group compatibility finds taste twins and the furthest-apart pair", async () => {
+  const { groupCompatibility } = await import("../src/lib/fairness");
+  const mk = (sats: number[]) => sats.map((v, i) => ({ member_id: `m${i}`, member_name: ["A", "B", "C"][i], affinity: v, satisfaction: v, because: [] }));
+  const ranked = [
+    [1, 0.9, 0], [0.75, 0.8, 0.25], [0.5, 0.5, 0.5], [0.25, 0.3, 0.75], [0, 0.1, 1],
+  ].map((sats, i) => ({ entity: { entity_id: `e${i}`, name: `E${i}`, type: "x", affinity: 0, explain: {} }, scores: mk(sats), min_satisfaction: 0, mean_satisfaction: 0, nash: 0 }));
+  const c = groupCompatibility(ranked)!;
+  assert.deepEqual([c.closest?.a, c.closest?.b], ["A", "B"]);
+  assert.ok(c.furthest && [c.furthest.a, c.furthest.b].includes("C"));
+  assert.ok(c.score < 0.5);
+});

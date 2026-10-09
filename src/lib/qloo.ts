@@ -132,8 +132,10 @@ function toEntity(r: Raw): Entity {
   const type =
     (r.subtype as string) ?? (r.type as string) ?? (asArr(r.types)[0] as unknown as string) ?? "urn:entity";
   const year = props.release_year ?? props.publication_year;
-  const fullAddress = (props.address as string) ?? ((r.location as Raw | undefined)?.address as string) ?? undefined;
-  const addr = shortAddress(fullAddress);
+  const loc = (r.location ?? {}) as Raw;
+  const fullAddress = (props.address as string) ?? (loc.address as string) ?? undefined;
+  const suburb = ((props.geocode as Raw | undefined)?.name as string) ?? undefined;
+  const addr = suburb ?? shortAddress(fullAddress);
   const price = num(props.price_level);
   const meta = [year, addr, price ? "$".repeat(price) : undefined].filter(Boolean).join(" · ") || undefined;
   return {
@@ -147,6 +149,10 @@ function toEntity(r: Raw): Entity {
       .map((t) => ({ id: String(t.id ?? t.tag_id), name: String(t.name) })),
     meta,
     address: fullAddress,
+    lat: num(loc.lat),
+    lon: num(loc.lon),
+    website: typeof props.website === "string" ? props.website : undefined,
+    closed: props.is_closed === true ? true : undefined,
   };
 }
 
@@ -204,8 +210,17 @@ export type InsightsQuery = {
   /** restrict scoring to these candidates (per-member scoring of a shared shortlist) */
   candidates?: string[];
   location?: string;
+  /** hard requirements (intersection) */
   tags?: string[];
+  /** never show options with these tags */
+  avoidTags?: string[];
+  /** soft preference: boosts options with these tags */
+  preferTags?: string[];
   priceMax?: number;
+  /** 0..1: lower = less mainstream ("surprise us") */
+  popularityMax?: number;
+  /** movies / TV: only titles released from this year */
+  yearMin?: number;
   take?: number;
 };
 
@@ -219,7 +234,11 @@ export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
     "filter.location.query": isPlace ? q.location : undefined,
     "filter.tags": q.tags?.join(","),
     "operator.filter.tags": q.tags?.length ? "intersection" : undefined,
+    "filter.exclude.tags": q.avoidTags?.length ? q.avoidTags.join(",") : undefined,
+    "signal.interests.tags": q.preferTags?.length ? q.preferTags.join(",") : undefined,
     "filter.price_level.max": isPlace ? q.priceMax : undefined,
+    "filter.popularity.max": q.popularityMax,
+    "filter.release_year.min": !isPlace ? q.yearMin : undefined,
     "feature.explainability": true,
     take: Math.min(q.take ?? 20, 50),
   };
@@ -231,15 +250,17 @@ export async function insights(q: InsightsQuery): Promise<InsightEntity[]> {
   }
   const data = (await get("/v2/insights", params)) as Raw;
   const ents = asArr((data.results as Raw | undefined)?.entities);
-  return ents.map((r) => {
-    const query = (r.query ?? {}) as Raw;
-    return {
-      ...toEntity(r),
-      affinity: num(query.affinity) ?? num(r.affinity) ?? 0,
-      popularity: num(r.popularity),
-      explain: parseExplain(query.explainability),
-    };
-  });
+  return ents.map((r) => toInsight(r)).filter((e) => !e.closed);
+}
+
+function toInsight(r: Raw): InsightEntity {
+  const query = (r.query ?? {}) as Raw;
+  return {
+    ...toEntity(r),
+    affinity: num(query.affinity) ?? num(r.affinity) ?? 0,
+    popularity: num(r.popularity),
+    explain: parseExplain(query.explainability),
+  };
 }
 
 /** Qloo Analysis Compare; only called in live mode. */
@@ -289,6 +310,7 @@ function mockInsights(q: InsightsQuery): InsightEntity[] {
       !q.signal.includes(e.entity_id) &&
       (!q.candidates || q.candidates.includes(e.entity_id)) &&
       (!q.tags?.length || q.tags.every((t) => e.tags!.some((et) => et.id === t))) &&
+      (!q.avoidTags?.length || !q.avoidTags.some((t) => e.tags!.some((et) => et.id === t))) &&
       (!q.priceMax || (e.meta?.match(/\$+/)?.[0].length ?? 1) <= q.priceMax),
   );
   return pool
@@ -302,7 +324,11 @@ function mockInsights(q: InsightsQuery): InsightEntity[] {
         if (sim > 0) explain[s.entity_id] = sim;
         total += sim;
       }
-      const affinity = Math.min(0.99, 0.25 + 0.6 * (total / Math.max(1, signal.length)) + 0.12 * hash(c.entity_id + q.signal.join()));
+      const boost = q.preferTags?.some((t) => c.tags!.some((et) => et.id === t)) ? 0.15 : 0;
+      const affinity = Math.min(
+        0.99,
+        0.25 + 0.6 * (total / Math.max(1, signal.length)) + 0.12 * hash(c.entity_id + q.signal.join()) + boost,
+      );
       const max = Math.max(0, ...Object.values(explain));
       for (const k in explain) explain[k] = +(explain[k] / (max || 1)).toFixed(3);
       return { ...c, affinity: +affinity.toFixed(4), explain };

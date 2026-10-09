@@ -1,4 +1,6 @@
 import Avatar from "@/components/Avatar";
+import FairnessChart from "@/components/FairnessChart";
+import ShortlistMap from "@/components/ShortlistMap";
 import { highlights } from "@/lib/highlights";
 import type { Decision, MemberScore, RankedCandidate } from "@/lib/types";
 
@@ -95,6 +97,70 @@ function MeterRow({
   );
 }
 
+function compatLabel(score: number) {
+  if (score >= 0.7) return "Close tastes";
+  if (score >= 0.55) return "Some common ground";
+  if (score >= 0.45) return "A real mix";
+  return "Pulling in different directions";
+}
+
+function Pair({
+  p,
+  label,
+  colorOfName,
+}: {
+  p?: { a: string; b: string; r: number };
+  label: string;
+  colorOfName: (name: string) => string;
+}) {
+  if (!p) return null;
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="flex -space-x-1.5">
+        <Avatar name={p.a} color={colorOfName(p.a)} size="sm" />
+        <Avatar name={p.b} color={colorOfName(p.b)} size="sm" />
+      </span>
+      <span>
+        <span className="text-muted">{label}: </span>
+        {p.a} &amp; {p.b}
+      </span>
+    </div>
+  );
+}
+
+/** How alike the group's tastes are on tonight's shortlist, and who agrees or clashes most. */
+function Compatibility({
+  c,
+  colorOfName,
+}: {
+  c: NonNullable<Decision["compatibility"]>;
+  colorOfName: (name: string) => string;
+}) {
+  const v = Math.round(c.score * 100);
+  return (
+    <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-lg font-semibold">Your group&apos;s taste compatibility</h3>
+        <p>
+          <span className="font-display text-2xl font-semibold tabular-nums">{v}%</span>{" "}
+          <span className="text-sm text-muted">{compatLabel(c.score)}</span>
+        </p>
+      </div>
+      <div className="mt-2 h-2 rounded-full bg-soft" aria-hidden>
+        <div className="h-full rounded-full bg-brand" style={{ width: `${v}%` }} />
+      </div>
+      <p className="mt-2 text-sm text-muted">
+        How similarly you rank tonight&apos;s options (50% means unrelated tastes).{" "}
+        {c.score < 0.55 ? "With tastes this different, an average would leave someone out; that is what the fair pick is for." : "You overlap a lot, so the fair pick and the average often agree."}
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Pair p={c.closest} label="Taste twins" colorOfName={colorOfName} />
+        <Pair p={c.furthest} label="Furthest apart" colorOfName={colorOfName} />
+      </div>
+    </div>
+  );
+}
+
 /** Compact per-member bars for runner-ups. */
 function MiniMeter({ scores, colors }: { scores: MemberScore[]; colors: Colors }) {
   return (
@@ -142,6 +208,12 @@ export default function Results({ decision, colors }: { decision: Decision; colo
           </div>
         )}
         <div className="space-y-3 p-5 sm:p-7">
+          {decision.change_note && (
+            <p className="rounded-xl bg-accent/15 px-3 py-2 text-sm">
+              <span className="font-semibold">Adjusted: </span>
+              {decision.change_note}
+            </p>
+          )}
           <p className="text-sm font-semibold text-brand">Your fair pick</p>
           <div>
             <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
@@ -187,6 +259,10 @@ export default function Results({ decision, colors }: { decision: Decision; colo
         </div>
       </article>
 
+      {decision.compatibility && (
+        <Compatibility c={decision.compatibility} colorOfName={(n) => color(top.r.scores.find((s) => s.member_name === n)?.member_id ?? "")} />
+      )}
+
       {maj && (
         <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">
           <h3 className="font-display text-lg font-semibold">
@@ -217,6 +293,9 @@ export default function Results({ decision, colors }: { decision: Decision; colo
           )}
         </div>
       )}
+
+      <FairnessChart decision={decision} />
+      {top.r.entity.type === "urn:entity:place" && <ShortlistMap decision={decision} />}
 
       {rest.length > 0 && (
         <div className="rounded-3xl border border-line bg-card p-5 sm:p-6">

@@ -17,6 +17,27 @@ Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
    - It ranks options with a **fairness rule**, can retry with a larger shortlist or different soft preferences, optionally runs `compare_tastes` on two members, then calls `finalize`. Diet and budget requirements survive retries. Finalization enforces the scorer's top-three order.
 4. The result shows a taste-match bar per person, the favourites behind each match, a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
 
+### Talk back to the agent
+After a pick, the group can say "no Japanese, closer to the city", "somewhere quieter" or "surprise us". The agent maps that onto Qloo:
+- `filter.exclude.tags` for "no X";
+- `signal.interests.tags` for soft preferences;
+- `filter.popularity.max` for "surprise us";
+- `filter.release_year.min` for "something newer";
+- an area plus a distance radius for "closer".
+
+It then re-plans and explains what changed. Requests accumulate, and the rules fallback handles the common ones without an LLM.
+
+### See the trade-off
+- A scatter of every option (group average vs the least-matched person).
+- A Leaflet/OpenStreetMap map of the shortlist.
+- A **taste compatibility** score: the mean pairwise correlation of members' ranks, plus "taste twins" and "furthest apart".
+
+### API for platforms
+`POST /api/v1/fair-pick` returns one fair pick with per-member evidence. It is deterministic and uses no LLM. See [docs/API.md](docs/API.md).
+
+### Cost
+A full agent decision measures about **$0.03–0.06** with Claude Sonnet 5.5: prompt caching is on, and adaptive thinking was measured cheaper than `between_tools` for this task. Each decision stores `agent_usage`.
+
 ### Does it matter? (live evaluation)
 
 Across 60 random groups on live Qloo data (30 dinner, 30 movie), the fair pick differed from the highest-average pick in **37%** of groups. Where it differed, it lifted the least-matched person by **+20.8 percentile points**, at a cost of 9.7 points to the group average. Method, a second run and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).

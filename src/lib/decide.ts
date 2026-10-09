@@ -4,7 +4,7 @@
  * never from the language model.
  */
 import "server-only";
-import { rankFairly } from "./fairness";
+import { groupCompatibility, rankFairly } from "./fairness";
 import { highlights } from "./highlights";
 import { DINNER_TAG, compareTastes, findTags, insights, qlooMode } from "./qloo";
 import {
@@ -20,6 +20,21 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export class ConstraintError extends Error {}
 
+export type CandidateOptions = {
+  tags?: string[];
+  avoidTags?: string[];
+  preferTags?: string[];
+  /** neighbourhood to centre on, e.g. "Fitzroy" */
+  area?: string;
+  maxKm?: number;
+  priceMax?: number;
+  popularityMax?: number;
+  yearMin?: number;
+  take?: number;
+};
+
+const DEFAULT_MAX_KM = 15;
+
 export type Step = { tool: string; summary: string };
 export type OnStep = (step: Step) => void;
 
@@ -33,10 +48,18 @@ export class DecisionSession {
   picks: Pick[] | null = null;
   tradeoffNote = "";
   requiredTags: string[] | null = null;
+  location?: string;
+  changeNote = "";
+  /** Claude token usage for this decision (set by the agent) */
+  usage?: Decision["agent_usage"];
 
   constructor(
     readonly huddle: Huddle,
     private readonly onStep?: OnStep,
+    /** follow-up requests from the group ("somewhere quieter", "no Japanese"), oldest first */
+    readonly refinements: string[] = [],
+    /** what the group was shown before this run, for "what changed" */
+    readonly previous?: { entity_id: string; name: string },
   ) {}
 
   get type() {
@@ -69,11 +92,11 @@ export class DecisionSession {
     return tags;
   }
 
-  async generateCandidates(opts: { tags?: string[]; priceMax?: number; take?: number } = {}) {
+  async generateCandidates(opts: CandidateOptions = {}) {
     // Diet and budget requirements survive agent retries and API fallback.
     if (this.requiredTags === null) {
       const tags: string[] = [];
-      // "Dinner spot" means restaurants, not bars or shops (live Qloo genre tag).
+      // "Dinner spot" means restaurants, not bars or shops (live Qloo category tag).
       if (this.huddle.kind === "place" && DINNER_TAG) tags.push(DINNER_TAG);
       if (this.huddle.kind === "place") {
         for (const diet of ["vegetarian", "vegan", "gluten-free"]) {
@@ -86,34 +109,61 @@ export class DecisionSession {
       }
       this.requiredTags = tags;
     }
+    const isPlace = this.huddle.kind === "place";
     const tags = [...new Set([...this.requiredTags, ...(opts.tags ?? [])])];
-    const budget = this.huddle.kind === "place" ? parsePrice(this.huddle.notes) : undefined;
+    const avoid = [...new Set(opts.avoidTags ?? [])].filter((t) => !tags.includes(t));
+    const prefer = [...new Set(opts.preferTags ?? [])];
+    const budget = isPlace ? parsePrice(this.huddle.notes) : undefined;
     const priceMax = budget === undefined ? opts.priceMax : Math.min(budget, opts.priceMax ?? budget);
     const take = Math.min(Math.max(opts.take ?? 20, 6), 40);
-    this.shortlist = await insights({
+    const location = isPlace && opts.area ? `${opts.area}, ${this.huddle.location ?? ""}`.replace(/, $/, "") : this.huddle.location;
+    const maxKm = isPlace ? (opts.maxKm ?? DEFAULT_MAX_KM) : undefined;
+
+    const raw = await insights({
       type: this.type,
       signal: this.groupSignal(),
-      location: this.huddle.location,
+      location,
       tags,
+      avoidTags: avoid,
+      preferTags: prefer,
       priceMax,
-      take,
+      popularityMax: opts.popularityMax,
+      yearMin: opts.yearMin,
+      // ask for a little more so the distance filter still leaves a full shortlist
+      take: maxKm ? Math.min(take + 10, 50) : take,
     });
+    const { kept, droppedFar } = maxKm ? withinRadius(raw, maxKm) : { kept: raw, droppedFar: 0 };
+    this.shortlist = kept.slice(0, take);
+    this.location = location;
     this.filters = {
       type: this.type,
-      ...(this.huddle.location && this.huddle.kind === "place" ? { location: this.huddle.location } : {}),
+      ...(location && isPlace ? { location } : {}),
       ...(tags.length ? { tags: tags.join(",") } : {}),
+      ...(avoid.length ? { avoid_tags: avoid.join(",") } : {}),
+      ...(prefer.length ? { prefer_tags: prefer.join(",") } : {}),
       ...(priceMax ? { price_level_max: priceMax } : {}),
+      ...(maxKm ? { max_km: maxKm } : {}),
+      ...(opts.popularityMax ? { popularity_max: opts.popularityMax } : {}),
+      ...(opts.yearMin ? { release_year_min: opts.yearMin } : {}),
     };
     this.ranked = [];
     this.perMember = {};
     this.majority = null;
     this.picks = null;
     this.tradeoffNote = "";
+    this.changeNote = "";
+    const label = (ids: string[]) => ids.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")).join(", ");
     this.log(
       "group_candidates",
       `${this.shortlist.length} candidates from the group's combined taste` +
-        (tags.length ? ` with tags ${tags.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")).join(", ")}` : "") +
-        (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : ""),
+        (opts.area ? ` around ${opts.area}` : "") +
+        (tags.length ? `, must be: ${label(tags)}` : "") +
+        (avoid.length ? `, avoiding: ${label(avoid)}` : "") +
+        (prefer.length ? `, leaning towards: ${label(prefer)}` : "") +
+        (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : "") +
+        (opts.popularityMax ? ", off the beaten track" : "") +
+        (opts.yearMin ? `, from ${opts.yearMin}` : "") +
+        (droppedFar ? `; dropped ${droppedFar} more than ${maxKm} km away` : ""),
     );
     return this.shortlist;
   }
@@ -127,7 +177,7 @@ export class DecisionSession {
           type: this.type,
           signal: m.picks.map((p) => p.entity_id),
           candidates: ids,
-          location: this.huddle.location,
+          location: this.location ?? this.huddle.location,
           take: ids.length,
         }).then((r) => [m.id, r] as const),
       ),
@@ -203,12 +253,16 @@ export class DecisionSession {
     };
   }
 
-  finalize(picks: Pick[], tradeoffNote: string) {
+  groupMessage = "";
+
+  finalize(picks: Pick[], tradeoffNote: string, changeNote = "", groupMessage = "") {
     const expected = this.ranked.slice(0, 3);
     if (!expected.length || picks.length !== expected.length || picks.some((p, i) => p.entity_id !== expected[i].entity.entity_id))
       return "error: use exactly the top 3 (or all available) entity_ids in fair ranking order";
     this.picks = picks;
     this.tradeoffNote = tradeoffNote;
+    this.changeNote = changeNote;
+    this.groupMessage = groupMessage;
     this.log("finalize", `${this.picks.length} picks`);
     return "saved";
   }
@@ -224,6 +278,12 @@ export class DecisionSession {
       picks,
       tradeoff_note: this.tradeoffNote || ruleTradeoff(this.ranked[0], this.majority),
       trace: this.trace,
+      refinements: this.refinements.length ? this.refinements : undefined,
+      previous_pick: this.previous?.name,
+      change_note: this.refinements.length ? this.changeNote || ruleChange(this.previous, this.ranked[0]) : undefined,
+      agent_usage: this.usage,
+      group_message: this.groupMessage || ruleMessage(this.huddle, this.ranked[0]),
+      compatibility: groupCompatibility(this.ranked),
     };
   }
 }
@@ -251,12 +311,62 @@ function ruleTradeoff(fair?: RankedCandidate, majority?: RankedCandidate | null)
   return `A simple average would pick ${majority.entity.name}, but ${loser.member_name}'s taste match there is only ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone at ${pct(fair.min_satisfaction)} or higher.`;
 }
 
-export async function decideWithRules(huddle: Huddle, onStep?: OnStep, why?: string): Promise<Decision> {
-  const s = new DecisionSession(huddle, onStep);
+export type RefineContext = { refinements?: string[]; previous?: { entity_id: string; name: string } };
+
+export async function decideWithRules(huddle: Huddle, onStep?: OnStep, why?: string, ctx: RefineContext = {}): Promise<Decision> {
+  const s = new DecisionSession(huddle, onStep, ctx.refinements, ctx.previous);
   if (why) s.log("agent", why);
-  await s.generateCandidates({ priceMax: parsePrice(huddle.notes) });
+  const opts = ctx.refinements?.length ? await refinementsByRules(s, ctx.refinements) : {};
+  await s.generateCandidates({ priceMax: parsePrice(huddle.notes), ...opts });
   await s.scoreMembers();
   return s.toDecision("rules");
+}
+
+/** Without the LLM: "no X" → avoid tag, "closer"/"near X" → radius/area, "cheaper" → budget, anything else → preference. */
+export async function refinementsByRules(s: DecisionSession, refinements: string[]): Promise<CandidateOptions> {
+  const opts: CandidateOptions = { avoidTags: [], preferTags: [] };
+  for (const clause of refinements.flatMap((r) => r.split(/,|;|\band\b/i)).map((c) => c.trim()).filter(Boolean)) {
+    const lower = clause.toLowerCase();
+    const neg = lower.match(/^(?:no|not|avoid|without|skip|nothing)\s+(.+)/);
+    const near = lower.match(/\b(?:near|in|around)\s+([a-z][a-z .'-]+)$/);
+    if (/\b(closer|nearby|walking distance|not too far|close by)\b/.test(lower)) opts.maxKm = 5;
+    if (near && s.huddle.kind === "place") opts.area = near[1].replace(/\b\w/g, (c) => c.toUpperCase());
+    if (/\b(cheaper|cheap|budget|less expensive)\b/.test(lower)) opts.priceMax = Math.max(1, (parsePrice(s.huddle.notes) ?? 3) - 1);
+    if (/\b(surprise|adventurous|hidden gem|different|unusual)\b/.test(lower)) opts.popularityMax = 0.6;
+    if (/\b(newer|recent|new)\b/.test(lower) && s.huddle.kind !== "place") opts.yearMin = new Date().getFullYear() - 8;
+    if (near || /\b(closer|nearby|cheaper|cheap|budget|surprise|adventurous|hidden gem|different|unusual|newer|recent)\b/.test(lower)) continue;
+    const term = (neg ? neg[1] : lower).replace(/\b(somewhere|something|place|food|please|more|a bit|bit)\b/g, "").trim();
+    if (!term) continue;
+    const [tag] = await s.findTags(term);
+    if (tag) (neg ? opts.avoidTags! : opts.preferTags!).push(tag.id);
+  }
+  return opts;
+}
+
+function ruleMessage(huddle: Huddle, top?: RankedCandidate) {
+  if (!top) return "";
+  const where = top.entity.meta ? ` (${top.entity.meta.split(" · ").join(", ")})` : "";
+  return `${huddle.title}: let's do ${top.entity.name}${where}. It's the fairest fit for all of us; nobody is below ${pct(top.min_satisfaction)}.`;
+}
+
+function ruleChange(prev: { entity_id: string; name: string } | undefined, now?: RankedCandidate) {
+  if (!prev || !now) return "";
+  return prev.entity_id === now.entity.entity_id
+    ? `${now.entity.name} still fits best after your change.`
+    : `Changed from ${prev.name} to ${now.entity.name}; everyone is at ${pct(now.min_satisfaction)} or higher.`;
+}
+
+/** Drop venues far from where the shortlist clusters (Qloo's city queries can reach 50 km out). */
+export function withinRadius<T extends { lat?: number; lon?: number }>(items: T[], maxKm: number) {
+  const pts = items.filter((i) => i.lat !== undefined && i.lon !== undefined);
+  if (pts.length < 3) return { kept: items, droppedFar: 0 };
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  const cLat = median(pts.map((p) => p.lat!));
+  const cLon = median(pts.map((p) => p.lon!));
+  const km = (p: T) =>
+    Math.hypot((p.lat! - cLat) * 111.2, (p.lon! - cLon) * 111.2 * Math.cos((cLat * Math.PI) / 180));
+  const kept = items.filter((i) => i.lat === undefined || i.lon === undefined || km(i) <= maxKm);
+  return { kept, droppedFar: items.length - kept.length };
 }
 
 /** "under $$$" means cheaper than $$$ (≤ $$); "max $$" / "≤ $$" / "up to $$" include it. */

@@ -76,3 +76,43 @@ export function rankFairly(
   ranked.sort((a, b) => b.min_satisfaction - a.min_satisfaction || b.nash - a.nash);
   return { ranked, majority };
 }
+
+export type Compatibility = {
+  /** 0..1: mean pairwise rank agreement over tonight's shortlist (0.5 = unrelated tastes) */
+  score: number;
+  pairs: { a: string; b: string; r: number }[];
+  closest?: { a: string; b: string; r: number };
+  furthest?: { a: string; b: string; r: number };
+};
+
+/** How alike the group's tastes are: Pearson correlation of members' percentiles across the shortlist. */
+export function groupCompatibility(ranked: RankedCandidate[]): Compatibility | undefined {
+  if (ranked.length < 4 || (ranked[0]?.scores.length ?? 0) < 2) return undefined;
+  const members = ranked[0].scores.map((s) => ({ id: s.member_id, name: s.member_name }));
+  const series = members.map((m) => ranked.map((r) => r.scores.find((s) => s.member_id === m.id)?.satisfaction ?? 0));
+  const corr = (x: number[], y: number[]) => {
+    const mx = x.reduce((a, b) => a + b, 0) / x.length;
+    const my = y.reduce((a, b) => a + b, 0) / y.length;
+    let num = 0;
+    let dx = 0;
+    let dy = 0;
+    for (let i = 0; i < x.length; i++) {
+      num += (x[i] - mx) * (y[i] - my);
+      dx += (x[i] - mx) ** 2;
+      dy += (y[i] - my) ** 2;
+    }
+    return dx && dy ? num / Math.sqrt(dx * dy) : 0;
+  };
+  const pairs: Compatibility["pairs"] = [];
+  for (let i = 0; i < members.length; i++)
+    for (let j = i + 1; j < members.length; j++)
+      pairs.push({ a: members[i].name, b: members[j].name, r: +corr(series[i], series[j]).toFixed(2) });
+  const mean = pairs.reduce((a, p) => a + p.r, 0) / pairs.length;
+  const sorted = [...pairs].sort((p, q) => q.r - p.r);
+  return {
+    score: +((mean + 1) / 2).toFixed(2),
+    pairs,
+    closest: sorted[0],
+    furthest: sorted.length > 1 ? sorted.at(-1) : undefined,
+  };
+}
