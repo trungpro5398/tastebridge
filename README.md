@@ -48,7 +48,7 @@ Answers are stored as append-only rows. **[/impact](https://tastebridge-brown.ve
 `POST /api/v1/fair-pick` returns one fair pick with per-member evidence. It is deterministic and uses no LLM. See [docs/API.md](docs/API.md).
 
 ### Cost
-A full agent decision measures about **$0.05–0.10** with Claude Sonnet 5.5: prompt caching is on, and adaptive thinking was measured cheaper than `between_tools` for this task. Each decision stores `agent_usage`.
+A full agent decision measures about **$0.05–0.12** with Claude Sonnet 5.5: prompt caching is on, and adaptive thinking was measured cheaper than `between_tools` for this task. Each decision stores `agent_usage`.
 
 ### Does it matter? (live evaluation)
 

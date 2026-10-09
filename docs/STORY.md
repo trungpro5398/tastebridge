@@ -111,7 +111,7 @@ With no keys it runs fully offline on a fictional demo catalogue (clearly labell
 - **Consumers (free):** friends, couples and families. A link and a QR code; no accounts.
 - **Teams:** team dinners and offsites, where the quiet person's taste matters just as much and HR cares about inclusion.
 - **Platforms (API):** booking, ticketing and group-travel products can call `POST /api/v1/fair-pick` and get one fair pick with evidence. It is deterministic, costs a few Qloo calls, and needs no LLM. A per-call or per-booking fee fits naturally, and events and ticketing companies (think group outings to a show) are a direct fit.
-- **Unit cost:** a full agent decision costs about **$0.05–0.10 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
+- **Unit cost:** a full agent decision costs about **$0.05–0.12 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
 
 ## What's next
 Booking hand-off (tables and tickets) for platform partners, "veto" tokens, recalibrating the flexibility threshold from real `/impact` data, and a React Native app.
