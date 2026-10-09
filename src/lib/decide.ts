@@ -120,7 +120,7 @@ export class DecisionSession {
     const names = [...new Set(tags.map((t) => t.name))];
     const close = names.filter((n) => n.toLowerCase().includes(key));
     const shown = (close.length ? close : names).slice(0, 5);
-    this.log("find_tags", `"${query}" → ${shown.join(", ") || "no matching Qloo tags"}`);
+    this.log("find_tags", `Looked up “${query}” in Qloo's tags: ${shown.join(", ") || "nothing matched"}`);
     return tags;
   }
 
@@ -138,7 +138,7 @@ export class DecisionSession {
     const request = JSON.stringify(opts, Object.keys(opts).sort());
     this.repeated = request === this.lastRequest && this.shortlist.length > 0 && this.picks === null;
     if (this.repeated) {
-      this.log("group_candidates", "same request as before, so the same shortlist is reused (no extra Qloo calls)");
+      this.log("group_candidates", "Same request as before, so the same shortlist is kept");
       return this.shortlist;
     }
     this.lastRequest = request;
@@ -222,7 +222,7 @@ export class DecisionSession {
     if (sameList) {
       // different arguments, same options: keep the existing scores instead of re-scoring everyone
       this.repeated = true;
-      this.log("group_candidates", "this request produced the same shortlist as before, so the existing scores are reused");
+      this.log("group_candidates", "This change gave the same shortlist, so the scores are kept");
       return this.shortlist;
     }
     this.shortlist = next;
@@ -246,20 +246,26 @@ export class DecisionSession {
     this.tradeoffNote = "";
     this.changeNote = "";
     const label = (ids: string[]) => ids.map((t) => t.split(":").pop()?.replace(/[-_]/g, " ")).join(", ");
-    this.log(
-      "group_candidates",
-      `${this.shortlist.length} candidates: ${brought ? `${brought} brought by individual members' own top matches, the rest ` : ""}from the group's combined taste` +
-        (opts.area ? ` around ${opts.area}` : "") +
-        (tags.length ? `, must be: ${label(tags)}` : "") +
-        (opts.avoidTags?.length ? `, avoiding: ${label(opts.avoidTags)}` : "") +
-        (calm ? ", calm required: no venues Qloo tags loud, noisy, bustling or lively" : "") +
-        (prefer.length ? `, leaning towards: ${label(prefer)}` : "") +
-        (priceMax ? `, price ≤ ${"$".repeat(priceMax)}` : "") +
-        (opts.popularityMax ? ", off the beaten track" : "") +
-        (opts.yearMin ? `, from ${opts.yearMin}` : "") +
-        (droppedNonDining ? `; dropped ${droppedNonDining} drink-first or non-restaurant venues` : "") +
-        (droppedFar ? `; dropped ${droppedFar} more than ${maxKm} km away` : ""),
-    );
+    const noun = isPlace ? "restaurants" : this.huddle.kind === "movie" ? "films" : "shows";
+    const musts = tags.filter((t) => t !== DINNER_TAG);
+    const leaning = prefer.filter((t) => !(calm && CALM_PREFER.includes(t)));
+    const parts = [
+      `${this.shortlist.length} ${noun} on the table` +
+        (brought ? `: ${brought} are someone's personal top match, the rest suit the whole group` : "") +
+        (opts.area ? `, around ${opts.area}` : "") +
+        ".",
+      musts.length ? `Must be ${label(musts)}.` : "",
+      priceMax ? `Up to ${"$".repeat(priceMax)}.` : "",
+      calm ? "Loud, bustling and lively places ruled out." : "",
+      opts.avoidTags?.length ? `Avoiding ${label(opts.avoidTags)}.` : "",
+      leaning.length ? `Leaning towards ${label(leaning)}.` : "",
+      opts.popularityMax ? "Less mainstream picks." : "",
+      opts.yearMin ? `Released from ${opts.yearMin}.` : "",
+      droppedNonDining || droppedFar
+        ? `Skipped ${[droppedNonDining && `${droppedNonDining} bars, cafés and shops`, droppedFar && `${droppedFar} places over ${maxKm} km away`].filter(Boolean).join(" and ")}.`
+        : "",
+    ];
+    this.log("group_candidates", parts.filter(Boolean).join(" "));
     return this.shortlist;
   }
 
@@ -289,9 +295,12 @@ export class DecisionSession {
     const moved = before && !sameTop ? ranked.find((r) => r.entity.entity_id === before.id) : undefined;
     this.log(
       "score_for_members",
-      `scored ${ids.length} candidates × ${this.huddle.members.length} members; fairest: ${top?.entity.name} (lowest match ${pct(top?.min_satisfaction ?? 0)}), simple average: ${majority?.entity.name} (lowest match ${pct(majority?.min_satisfaction ?? 0)})` +
-        (sameTop ? `; the fairest option did not change (percentages are relative to this longer list)` : "") +
-        (before && !sameTop ? `; previous fairest ${before.name} ${moved ? `now has lowest match ${pct(moved.min_satisfaction)}` : "is not on this list"}` : ""),
+      `Scored all ${ids.length} for each of the ${this.huddle.members.length} people. Fairest: ${top?.entity.name} (nobody who cares below ${pct(top?.min_satisfaction ?? 0)}).` +
+        (majority && top && majority.entity.entity_id !== top.entity.entity_id
+          ? ` A simple average would pick ${majority.entity.name}, where someone who cares drops to ${pct(majority.min_satisfaction)}.`
+          : " A simple average would pick the same.") +
+        (sameTop ? " The fairest option stayed the same." : "") +
+        (before && !sameTop ? ` The previous favourite, ${before.name}, ${moved ? `now has a lowest match of ${pct(moved.min_satisfaction)}` : "is no longer on the list"}.` : ""),
     );
     return { ranked, majority };
   }

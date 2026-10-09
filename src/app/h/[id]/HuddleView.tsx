@@ -1,5 +1,6 @@
 "use client";
 
+import { STEP_LABEL } from "@/lib/steps";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import FavouritePicker, { typeLabel } from "@/components/FavouritePicker";
 import InvitePanel from "@/components/InvitePanel";
@@ -16,14 +17,6 @@ const REFINE_CHIPS = {
   movie: ["Something lighter", "No horror", "Something newer", "Surprise us"],
   tv_show: ["Something lighter", "Shorter episodes", "No crime", "Surprise us"],
 } as const;
-const STEP_LABEL: Record<string, string> = {
-  agent: "Planning",
-  find_tags: "Matching must-haves to Qloo tags",
-  group_candidates: "Building a shortlist from everyone's taste",
-  score_for_members: "Scoring the shortlist for each person",
-  compare_tastes: "Comparing tastes",
-  finalize: "Writing each person's explanation",
-};
 
 function subscribeStorage(cb: () => void) {
   window.addEventListener("storage", cb);

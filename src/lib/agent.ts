@@ -61,12 +61,12 @@ export async function decide(
     return decideWithRules(
       huddle,
       opts.onStep,
-      `Claude skipped (${opts.skipReason ?? "budget"}); using rule-based explanations`,
+      `Claude skipped (${opts.skipReason ?? "budget"}), so simple rules wrote the explanations`,
       ctx,
     );
 
   const s = new DecisionSession(huddle, opts.onStep, opts.refinements, opts.previous);
-  s.log("agent", "Claude is planning which Qloo calls to make");
+  s.log("agent", "Claude is planning which Qloo lookups to make");
   const json = (v: unknown) => JSON.stringify(v);
 
   const tools = [
@@ -198,11 +198,11 @@ export async function decide(
     const usd = (usage.input * 2 + usage.cacheRead * 0.2 + usage.cacheWrite * 2.5 + usage.output * 10) / 1e6;
     s.usage = { ...usage, usd: +usd.toFixed(4), model: MODEL };
     console.info("[agent] usage", JSON.stringify(s.usage));
-    if (final?.stop_reason === "refusal") s.log("agent", "model declined; using rule-based explanations");
+    if (final?.stop_reason === "refusal") s.log("agent", "Claude declined, so simple rules wrote the explanations");
   } catch (err) {
     if (err instanceof Anthropic.APIError) {
       console.error("[agent] Claude API error", err.status, err.message);
-      s.log("agent", `Claude unavailable (${err.status ?? "network"}); using rule-based explanations`);
+      s.log("agent", `Claude unavailable (${err.status ?? "network"}), so simple rules wrote the explanations`);
     } else {
       throw err;
     }

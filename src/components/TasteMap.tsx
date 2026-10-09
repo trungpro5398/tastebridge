@@ -54,7 +54,7 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
   const differs = avgId && avgId !== top.entity.entity_id;
 
   return (
-    <figure className="rounded-3xl border border-line bg-card p-5 sm:p-6">
+    <figure className="py-2">
       <figcaption>
         <h3 className="font-display text-lg font-semibold">Taste map: where the bridge is</h3>
         <p className="text-sm text-muted">

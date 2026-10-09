@@ -4,10 +4,10 @@ import CreateHuddle from "./CreateHuddle";
 import DemoButton from "./DemoButton";
 
 const example = [
-  { name: "Grandma Lan", v: 65 },
-  { name: "Minh", v: 55 },
-  { name: "Linh", v: 78 },
-  { name: "Mai", v: 62 },
+  { name: "Grandma Lan", v: 57 },
+  { name: "Minh", v: 66 },
+  { name: "Linh", v: 66 },
+  { name: "Mai", v: 57 },
 ];
 
 const steps = [
@@ -66,11 +66,11 @@ export default function Home() {
             <span className="text-sm font-semibold text-brand">Example fair pick</span>
             <span className="text-xs text-muted">live Qloo data, Melbourne</span>
           </figcaption>
-          <p className="mt-2 font-display text-2xl font-semibold">Silks</p>
-          <p className="text-sm text-muted">Southbank, $$. Sunday lunch for three generations.</p>
+          <p className="mt-2 font-display text-2xl font-semibold">The Moat</p>
+          <p className="text-sm text-muted">Melbourne CBD, $$. Sunday lunch for three generations.</p>
           <ul className="mt-4 space-y-2.5">
             {example.map((p, i) => (
-              <li key={p.name} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${p.name === "Minh" ? "bg-accent/15" : ""}`}>
+              <li key={p.name} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 ${p.name === "Grandma Lan" ? "bg-accent/15" : ""}`}>
                 <Avatar name={p.name} color={memberColor(i)} size="sm" />
                 <div className="min-w-0 flex-1">
                   <div className="flex justify-between text-sm">
@@ -85,8 +85,8 @@ export default function Home() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-muted">
-            A simple average would choose Republica St Kilda Beach, where Grandma Lan drops to 19%. TasteBridge keeps
-            everyone at 55% or more.
+            A simple average would choose Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. TasteBridge keeps
+            everyone at 57% or more.
           </p>
         </figure>
       </section>
@@ -126,8 +126,8 @@ export default function Home() {
           <h2 className="font-display text-3xl font-semibold tracking-tight">For teams and platforms</h2>
           <p className="mt-2 text-muted">
             Team dinners, offsites, group trips and shared nights out have the same problem at a bigger scale. Booking,
-            ticketing and travel platforms can call the same fair-pick engine directly: no LLM, a few Qloo calls, and
-            every result comes with its evidence.
+            ticketing and travel platforms can call the same fair-pick engine directly: no AI cost per call, a few Qloo
+            lookups, and every result comes with its evidence.
           </p>
           <ul className="mt-4 space-y-1.5 text-sm">
             <li>Team-dinner and offsite tools: one venue the whole team can live with</li>
@@ -168,8 +168,8 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-line pt-6 text-sm text-muted">
-        Taste matches use Qloo&apos;s audience-level affinities: they describe what people with similar tastes tend to
-        like, not a prediction about any one person. No personal data is sent to Qloo. Built for the Qloo Agentic
+        Taste matches come from Qloo and describe what people with similar tastes tend to like, not a prediction about
+        any one person. No personal data is sent to Qloo. Built for the Qloo Agentic
         Hackathon.{" "}
         <a className="underline" href="https://github.com/trungpro5398/tastebridge">
           Source on GitHub
