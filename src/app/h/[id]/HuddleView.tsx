@@ -115,6 +115,10 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
       });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 409 && data.deciding) {
+          setHuddle((h) => ({ ...h, deciding: true }));
+          return;
+        }
         throw new Error(data.error ?? "Something went wrong. Try again.");
       }
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -190,6 +194,11 @@ export default function HuddleView({ initial }: { initial: Huddle }) {
               {steps.length === 0 ? "Reading everyone's favourites" : "Working"}
             </li>
           </ol>
+        </div>
+      ) : !huddle.result && huddle.deciding ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-line bg-card p-5 text-sm" role="status">
+          <span className="size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand" />
+          Someone in your group is finding the pick. This page updates by itself.
         </div>
       ) : !huddle.result ? (
         <button

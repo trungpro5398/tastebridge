@@ -52,6 +52,8 @@ export type Huddle = {
   created_at: string;
   members: Member[];
   result?: Decision | null;
+  /** a decision is being computed right now (another viewer pressed the button) */
+  deciding?: boolean;
   feedback?: { vote: "up" | "down"; at: string }[];
 };
 

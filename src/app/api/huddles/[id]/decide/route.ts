@@ -1,7 +1,8 @@
+import { after } from "next/server";
 import { agentEnabled, decide } from "@/lib/agent";
 import { ConstraintError, type Step } from "@/lib/decide";
 import { QlooError, withQlooLog } from "@/lib/qloo";
-import { getHuddle, saveDecision } from "@/lib/store";
+import { getHuddle, isDeciding, saveDecision, setDeciding } from "@/lib/store";
 import type { Decision, Huddle } from "@/lib/types";
 import { ipHash, reserveAgentRun } from "@/lib/usage";
 
@@ -57,20 +58,45 @@ export async function POST(request: Request, ctx: RouteContext<"/api/huddles/[id
     });
   }
 
+  if (await isDeciding(id))
+    return Response.json(
+      { error: "Someone in your group is already finding the pick. It will appear here in a few seconds.", deciding: true },
+      { status: 409 },
+    );
+  await setDeciding(id, true);
+
   if (!stream) {
-    const out = await run(huddle, request);
+    const out = await run(huddle, request).finally(() => setDeciding(id, false));
     return "error" in out ? Response.json({ error: out.error }, { status: out.status }) : Response.json(out);
   }
 
   const enc = new TextEncoder();
-  const body$ = new ReadableStream({
-    async start(controller) {
-      const send = (v: unknown) => controller.enqueue(enc.encode(JSON.stringify(v) + "\n"));
-      const out = await run(huddle, request, (step) => send({ type: "step", ...step }));
-      send("error" in out ? { type: "error", ...out } : { type: "result", decision: out });
-      controller.close();
+  let ctrl!: ReadableStreamDefaultController<Uint8Array>;
+  let open = true;
+  const body$ = new ReadableStream<Uint8Array>({
+    start(controller) {
+      ctrl = controller;
+    },
+    cancel() {
+      open = false; // viewer left; the work below still finishes and saves
     },
   });
+  const send = (v: unknown) => {
+    if (!open) return;
+    try {
+      ctrl.enqueue(enc.encode(JSON.stringify(v) + "\n"));
+    } catch {
+      open = false;
+    }
+  };
+  const work = run(huddle, request, (step) => send({ type: "step", ...step }))
+    .finally(() => setDeciding(id, false))
+    .then((out) => {
+      send("error" in out ? { type: "error", ...out } : { type: "result", decision: out });
+      if (open) ctrl.close();
+    });
+  // Keep the function alive until the decision is saved, even if the viewer reloads.
+  after(() => work);
   return new Response(body$, {
     headers: { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" },
   });

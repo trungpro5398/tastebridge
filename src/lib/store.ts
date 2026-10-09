@@ -109,3 +109,15 @@ export async function kvSet(key: string, value: unknown) {
   if (!sb) return void kvMem.set(key, { at: Date.now(), value });
   await sb.from("kv").upsert({ key, value, updated_at: new Date().toISOString() });
 }
+
+// ---------- "a decision is running" marker, so friends don't start a second run ----------
+const DECIDING_TTL_MS = 120_000;
+
+export async function isDeciding(huddleId: string) {
+  const v = await kvGet<{ active: boolean }>(`deciding:${huddleId}`, DECIDING_TTL_MS).catch(() => null);
+  return !!v?.active;
+}
+
+export async function setDeciding(huddleId: string, active: boolean) {
+  await kvSet(`deciding:${huddleId}`, { active }).catch(() => {});
+}
