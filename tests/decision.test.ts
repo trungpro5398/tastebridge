@@ -182,3 +182,17 @@ test("explanations cannot claim an ambience the option's Qloo tags don't support
   assert.deepEqual(ungroundedAmbience("A calm, cosy spot.", ["Calm", "Cozy"]), []);
   assert.deepEqual(ungroundedAmbience("Great dumplings for everyone.", []), []);
 });
+
+test("the agent can't finalize while someone with a preference is left behind and nothing was re-planned", async () => {
+  const session = new DecisionSession(huddle(""));
+  session.requireReplan = true;
+  await session.generateCandidates({ priceMax: 4 });
+  await session.scoreMembers();
+  session.ranked[0].min_satisfaction = 0.4; // someone with a preference is left behind
+  const picks = session.toDecision("rules").picks;
+  assert.match(session.finalize(picks, "t"), /Re-plan once/);
+  await session.generateCandidates({ priceMax: 3 });
+  await session.scoreMembers();
+  session.ranked[0].min_satisfaction = 0.4;
+  assert.equal(session.finalize(session.toDecision("rules").picks, "t"), "saved");
+});

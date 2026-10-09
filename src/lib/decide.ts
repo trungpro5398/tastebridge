@@ -135,6 +135,10 @@ export class DecisionSession {
   }
 
   private lastTop: { id: string; name: string } | undefined;
+  /** distinct shortlists built in this session (a re-plan makes it 2+) */
+  shortlistsTried = 0;
+  /** set by the agent runner: finalize then insists on one re-plan when someone is left behind */
+  requireReplan = false;
   private lastRequest = "";
   /** True when the last group_candidates call repeated the previous request exactly. */
   repeated = false;
@@ -231,6 +235,7 @@ export class DecisionSession {
       return this.shortlist;
     }
     this.shortlist = next;
+    this.shortlistsTried += 1;
     const brought = this.shortlist.filter((e) => e.champion_of).length;
     this.location = location;
     this.filters = {
@@ -256,7 +261,7 @@ export class DecisionSession {
     const leaning = prefer.filter((t) => !(calm && CALM_PREFER.includes(t)));
     const parts = [
       `${this.shortlist.length} ${noun} on the table` +
-        (brought ? `: ${brought} are someone's personal top match, the rest suit the whole group` : "") +
+        (brought ? `: ${brought} brought by one person's own taste, the rest suit the whole group` : "") +
         (opts.area ? `, around ${opts.area}` : "") +
         ".",
       musts.length ? `Must be ${label(musts)}.` : "",
@@ -300,9 +305,9 @@ export class DecisionSession {
     const moved = before && !sameTop ? ranked.find((r) => r.entity.entity_id === before.id) : undefined;
     this.log(
       "score_for_members",
-      `Scored all ${ids.length} for each of the ${this.huddle.members.length} people. Fairest: ${top?.entity.name} (nobody who cares below ${pct(top?.min_satisfaction ?? 0)}).` +
+      `Scored all ${ids.length} for each of the ${this.huddle.members.length} people. Fairest: ${top?.entity.name} (nobody with a clear preference below ${pct(top?.min_satisfaction ?? 0)}).` +
         (majority && top && majority.entity.entity_id !== top.entity.entity_id
-          ? ` A simple average would pick ${majority.entity.name}, where someone who cares drops to ${pct(majority.min_satisfaction)}.`
+          ? ` A simple average would pick ${majority.entity.name}, where someone with a clear preference drops to ${pct(majority.min_satisfaction)}.`
           : " A simple average would pick the same.") +
         (sameTop ? " The fairest option stayed the same." : "") +
         (before && !sameTop ? ` The previous favourite, ${before.name}, ${moved ? `now has a lowest match of ${pct(moved.min_satisfaction)}` : "is no longer on the list"}.` : ""),
@@ -353,7 +358,7 @@ export class DecisionSession {
         name: r.entity.name,
         meta: r.entity.meta,
         known_for: highlights(r.entity, 5),
-        ...(r.entity.champion_of ? { top_match_for: r.entity.champion_of } : {}),
+        ...(r.entity.champion_of ? { brought_by: r.entity.champion_of } : {}),
         ...(this.wantsCalm() ? { tags_that_fit_the_calm_request: calmTags(r.entity) } : {}),
         lowest_taste_match_among_those_who_care: pct(r.min_satisfaction),
         ...cared(r),
@@ -391,6 +396,11 @@ export class DecisionSession {
     const badNotes = ungroundedAmbience(notes, allTags).filter((w) => !brief.includes(w));
     if (badNotes.length)
       return `error: the notes call something "${badNotes.join('", "')}", but no option's Qloo tags say so. Rewrite without that claim.`;
+    const floor = expected[0].min_satisfaction;
+    if (this.requireReplan && floor < 0.5 && this.shortlistsTried < 2) {
+      const who = expected[0].scores.filter((x) => !x.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
+      return `error: ${who?.member_name ?? "someone"} is at ${pct(floor)} on the fairest option. Re-plan once for them first (find_tags for something their favourites suggest, group_candidates with prefer_tag_ids and a reason naming them, then score_for_members), then finalize on whichever shortlist protects them better.`;
+    }
     for (const [i, p] of picks.entries()) {
       const tags = (expected[i].entity.tags ?? []).map((t) => t.name);
       const text = [p.headline, p.why_group, ...p.per_member.map((m) => m.reason)].join(" ");
@@ -412,7 +422,7 @@ export class DecisionSession {
       created_at: new Date().toISOString(),
       mode: { qloo: qlooMode, agent },
       filters: this.filters,
-      ranked: this.ranked.slice(0, 10),
+      ranked: withPersonalTops(this.ranked, this.huddle.members.map((m) => m.id)),
       majority: this.majority,
       picks,
       tradeoff_note: this.tradeoffNote || ruleTradeoff(this.ranked[0], this.majority),
@@ -435,6 +445,17 @@ export class DecisionSession {
       ),
     };
   }
+}
+
+/** Top 10 plus each person's own #1, so every option the page names is on the page. */
+function withPersonalTops(ranked: RankedCandidate[], memberIds: string[]) {
+  const out = ranked.slice(0, 10);
+  for (const id of memberIds) {
+    const mine = (r: RankedCandidate) => r.scores.find((s) => s.member_id === id)?.percentile ?? 0;
+    const best = [...ranked].sort((a, b) => mine(b) - mine(a))[0];
+    if (best && !out.includes(best)) out.push(best);
+  }
+  return out;
 }
 
 /** Lowest match among members who are not flexible tonight: the person the pick really protects. */

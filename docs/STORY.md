@@ -6,7 +6,7 @@ TasteBridge helps a group pick **one** dinner spot, movie or TV show that everyo
 
 1. One person starts a *huddle*, adds must-haves ("Priya is vegetarian, under $$$") and shares a link.
 2. Each friend adds up to three favourites from **any** domain: a film, an artist, a show, a book.
-3. **Everyone's taste goes on the table.** The shortlist holds each person's own top Qloo matches ("Linh's top match") plus options from the group's combined taste. The agent then **scores that same shortlist against each person's own taste**.
+3. **Everyone's taste goes on the table.** The shortlist holds options brought by each person's own taste (their top Qloo matches in the city, labelled "Brought by Linh") plus options from the group's combined taste. The agent then **scores that same shortlist against each person's own taste**.
 4. It recommends the option that maximises the **lowest taste match among people who actually have a preference tonight**. Everyone sees their own match and the favourite behind it ("driven mostly by *MasterChef: Australia*"). People Qloo sees as indifferent between tonight's options are marked **flexible tonight** instead of being "protected" on noise.
 5. It also shows what a simple average would have picked and whose match would have been lowest there. Sometimes both pick the same thing, and the app says so.
 
@@ -32,7 +32,7 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 **Real run (production, 10 Oct 2026): Sunday lunch, three generations**
 - A Vietnamese-Australian family in Melbourne. Grandma Lan (Khánh Ly, Trịnh Công Sơn, *The Scent of Green Papaya*), Minh (*Anthony Bourdain: Parts Unknown*, The Rolling Stones, *Heat*), Linh (*The Great British Baking Show*, Céline Dion, *Pride and Prejudice*) and their teenager Mai (*Spider-Man: Into the Spider-Verse*, BTS, *Stranger Things*).
 - Must-have: "Grandma likes it calm. Under $$$." The code turns that into hard rules: up to $$, and no venue Qloo tags loud, noisy, bustling or lively.
-- 21 Melbourne restaurants went on the table; 9 were someone's personal top match.
+- 21 Melbourne restaurants went on the table; 9 were brought by one person's own taste.
 - Qloo sees Mai as flexible tonight: her scores barely differ between these options.
 - A simple average picks Kawa Sake Sushi Boat, where **Grandma Lan's match is 37%** (her 15th of 21 options).
 - TasteBridge picks **The Moat**: Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%.
@@ -108,7 +108,7 @@ With no keys it runs fully offline on a fictional demo catalogue (clearly labell
 - **Consumers (free):** friends, couples and families. A link and a QR code; no accounts.
 - **Teams:** team dinners and offsites, where the quiet person's taste matters just as much and HR cares about inclusion.
 - **Platforms (API):** booking, ticketing and group-travel products can call `POST /api/v1/fair-pick` and get one fair pick with evidence. It is deterministic, costs a few Qloo calls, and needs no LLM. A per-call or per-booking fee fits naturally, and events and ticketing companies (think group outings to a show) are a direct fit.
-- **Unit cost:** a full agent decision costs about **$0.03–0.06 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
+- **Unit cost:** a full agent decision costs about **$0.05–0.08 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
 
 ## What's next
 Booking hand-off (tables and tickets) for platform partners, "veto" tokens, recalibrating the flexibility threshold from real `/impact` data, and a React Native app.

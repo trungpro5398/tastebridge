@@ -26,11 +26,11 @@ function lowest(scores: MemberScore[]) {
   return scores.filter((s) => !s.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0];
 }
 
-/** "Linh's top match" / "Top match for Mai and Leo": who put this option on the table. */
+/** "Brought by Linh" / "Brought by Mai and Leo": whose own taste put this option on the table. */
 function broughtBy(names?: string[]) {
   if (!names?.length) return "";
-  if (names.length === 1) return `${names[0]}'s top match`;
-  return `Top match for ${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  if (names.length === 1) return `Brought by ${names[0]}`;
+  return `Brought by ${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
 /** "12th of 24 options": the honest reading of a within-shortlist percentile. */
@@ -117,6 +117,7 @@ function MeterRow({
   reason,
   protectedRow,
   ownTop,
+  rank,
 }: {
   s: MemberScore;
   color: string;
@@ -124,6 +125,8 @@ function MeterRow({
   protectedRow?: boolean;
   /** this person's own top option tonight, when it isn't the pick */
   ownTop?: string;
+  /** "9th of 21": where the pick sits on this person's own list */
+  rank?: string;
 }) {
   const v = Math.round(s.satisfaction * 100);
   return (
@@ -149,8 +152,11 @@ function MeterRow({
               )}
             </span>
             <span className="shrink-0 text-right">
-              <span className="font-display text-lg font-semibold tabular-nums">{v}%</span>
-              <span className="ml-1.5 text-xs text-muted">{s.flexible ? "flexible" : fitWord(s.satisfaction)}</span>
+              <span className="font-display text-lg font-semibold tabular-nums">{rank ?? `${v}%`}</span>
+              <span className="ml-1.5 text-xs text-muted">
+                {rank ? `${v}% match, ` : ""}
+                {s.flexible ? "flexible" : fitWord(s.satisfaction)}
+              </span>
             </span>
           </div>
           <div className="mt-1.5 h-2 rounded-full bg-soft" aria-hidden>
@@ -159,7 +165,7 @@ function MeterRow({
         </div>
       </div>
       {reason && <p className="mt-1.5 pl-11 text-sm text-muted">{reason}</p>}
-      {ownTop && <p className="mt-1 pl-11 text-xs text-muted">Your own top match tonight: {ownTop}</p>}
+      {ownTop && <p className="mt-1 pl-11 text-xs text-muted">Your own #1 of tonight&apos;s options: {ownTop}</p>}
     </li>
   );
 }
@@ -342,6 +348,7 @@ export default function Results({
                 reason={reasons.get(s.member_name)}
                 protectedRow={top.r.scores.length > 1 && s.member_id === low?.member_id}
                 ownTop={decision.personal_top?.[s.member_id] !== top.r.entity.name ? decision.personal_top?.[s.member_id] : undefined}
+                rank={decision.shortlist_size && s.percentile !== undefined ? rankText(s.percentile, decision.shortlist_size) : undefined}
               />
             ))}
           </ul>
@@ -391,12 +398,12 @@ export default function Results({
                     </>
                   ) : (
                     <>
-                      nobody who cares below
+                      nobody with a clear preference below
                       <b className="font-display text-xl tabular-nums">{pct(top.r.min_satisfaction)}</b>
                     </>
                   )}
                 </p>
-                <p className="mt-1 text-xs text-muted">nobody who cares below {pct(top.r.min_satisfaction)}</p>
+                <p className="mt-1 text-xs text-muted">nobody with a clear preference below {pct(top.r.min_satisfaction)}</p>
               </div>
             </div>
           )}
@@ -466,7 +473,7 @@ export default function Results({
           ))}
         </ol>
         <p className="mt-3 text-xs text-muted">
-          How we pick: the option where the least-happy person who cares is best off; on a near-tie, the one that is kindest
+          How we pick: the option where the least-happy person with a clear preference is best off; on a near-tie, the one that is kindest
           to everyone. {decision.mode.agent === "claude" ? "Claude wrote the explanations using only these results." : "Simple rules wrote the explanations."}
         </p>
       </details>

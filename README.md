@@ -15,7 +15,7 @@ Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
    - `group_candidates` puts everyone's taste on the table: each person's own top 3 Qloo matches plus options from the whole group's combined taste (`/v2/insights`, round-robin signal so no one dominates). Diet, budget and calm/quiet requests are enforced in code.
    - `score_for_members` re-scores **the same shortlist against each person's own favourites** (`/v2/insights` + `filter.results.entities` + `feature.explainability`).
    - It ranks options with a **fairness rule** (protect the least-happy person who has a preference tonight), runs `compare_tastes` on the two people who disagree most, re-plans once when the protected person is in their bottom half, and calls `finalize`. Each plan step carries a plain-English reason shown to the group. Finalization enforces the scorer's top-three order and rejects ambience claims the Qloo tags don't support.
-4. The result shows a taste-match bar per person (with the favourite behind it when one clearly stands out, and each person's own top match), a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
+4. The result shows a taste-match bar per person (with the favourite behind it when one clearly stands out, and each person's own #1 of tonight's options), a Maps / where-to-watch link, and **what a simple average would have picked and whose match would have been lowest there**.
 
 ### Talk back to the agent
 After a pick, the group can say "no Japanese, closer to the city", "somewhere quieter" or "surprise us". The agent maps that onto Qloo:
@@ -44,7 +44,7 @@ Answers are stored as append-only rows. **[/impact](https://tastebridge-brown.ve
 `POST /api/v1/fair-pick` returns one fair pick with per-member evidence. It is deterministic and uses no LLM. See [docs/API.md](docs/API.md).
 
 ### Cost
-A full agent decision measures about **$0.03–0.06** with Claude Sonnet 5.5: prompt caching is on, and adaptive thinking was measured cheaper than `between_tools` for this task. Each decision stores `agent_usage`.
+A full agent decision measures about **$0.05–0.08** with Claude Sonnet 5.5: prompt caching is on, and adaptive thinking was measured cheaper than `between_tools` for this task. Each decision stores `agent_usage`.
 
 ### Does it matter? (live evaluation)
 
@@ -87,7 +87,7 @@ npm run test:smoke       # creates disposable local huddles in all three categor
 npm run check:setup      # reports missing configuration without printing secrets
 ```
 
-**Live verification (10 Oct 2026, hackathon API + Claude Sonnet 5.5, production):** the three-generations demo ("Grandma likes it calm. Under $$$.") put 21 restaurants on the table, 9 of them someone's personal top match. The fair pick was **The Moat** (Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%); a simple average picks Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. Claude compared Grandma Lan and Minh and described The Moat only with its Qloo tags (Intimate). 10 Qloo calls, $0.08 of Claude.
+**Live verification (10 Oct 2026, hackathon API + Claude Sonnet 5.5, production):** the three-generations demo ("Grandma likes it calm. Under $$$.") put 21 restaurants on the table, 9 of them brought by one person's own taste. The fair pick was **The Moat** (Grandma Lan 57%, Minh 66%, Linh 66%, Mai 57%); a simple average picks Kawa Sake Sushi Boat, where Grandma Lan drops to 37%. Claude compared Grandma Lan and Minh and described The Moat only with its Qloo tags (Intimate). 10 Qloo calls, $0.08 of Claude.
 
 In offline mode (no keys), rules pick The Green Fig: Josh's match is 46% there, versus 39% at the average pick.
 

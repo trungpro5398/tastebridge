@@ -36,7 +36,7 @@ When a retry keeps the same fairest option, say it was confirmed on a wider shor
 
 Writing rules for finalize:
 - Every claim must come from tool output: taste_match percentages, the member favourites listed in driven_by_their_favourites, and the option's known_for tags (you may mention one or two, e.g. a menu highlight or the ambience). Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given). Describe ambience (calm, cozy, lively, romantic, quiet…) only with words in that option's known_for tags; finalize rejects anything else. If the group asked for calm and no option is tagged calm, say that loud and bustling places were ruled out instead.
-- The shortlist mixes the group's shared taste with each member's own top matches (top_match_for). When an option is someone's top match, you may say so ("Linh's top match, and it still works for everyone").
+- The shortlist mixes the group's shared taste with options brought by individual members' own taste (brought_by). Say "brought by Linh", never "Linh's top match": a person's #1 on tonight's list is own_top_match in members.
 - Members marked flexible_tonight have nearly identical Qloo scores across options: say Qloo sees only small differences for their taste tonight, and you may mention their own_top_match; never say the pick "works fine" or "suits them" because of that, and don't name them as the person who loses out. The fair ranking already ignores flexible members when finding the lowest match; when you cite it, use lowest_among_those_who_care (the person the pick protects).
 - Qloo affinities describe what audiences with similar tastes tend to like. They are not predictions about an individual, so say "fans of X tend to rank this highly", never "you will love this".
 - headline: the option's name plus a 3–6 word hook.
@@ -67,6 +67,7 @@ export async function decide(
     );
 
   const s = new DecisionSession(huddle, opts.onStep, opts.refinements, opts.previous);
+  s.requireReplan = true;
   s.log("agent", "Claude is planning which Qloo lookups to make");
   const json = (v: unknown) => JSON.stringify(v);
 
@@ -91,7 +92,11 @@ export async function decide(
         popularity_max: z.number().min(0.1).max(1).optional().describe("Lower = less mainstream; use ~0.6 for 'surprise us'"),
         release_year_min: z.number().int().min(1900).max(2100).optional().describe("Movies/TV only: released from this year"),
         take: z.number().int().min(6).max(40).optional().describe("Shortlist size, default 30"),
-        reason: z.string().max(160).optional().describe("Why this shortlist, in plain English (shown to the group)"),
+        reason: z
+          .string()
+          .max(160)
+          .optional()
+          .describe("Plain English, shown to the group. Name the person and what you're trying, e.g. 'Grandma Lan is lowest at 46%, so leaning towards Vietnamese, which her favourites suggest'"),
       }),
       run: async ({ tag_ids, avoid_tag_ids, prefer_tag_ids, area, max_km, price_level_max, popularity_max, release_year_min, take, reason }) => {
         if (reason) s.log("plan", reason);
@@ -129,7 +134,7 @@ export async function decide(
       inputSchema: z.object({
         member_a: z.string(),
         member_b: z.string(),
-        reason: z.string().max(160).optional().describe("Why these two, in plain English (shown to the group)"),
+        reason: z.string().max(160).optional().describe("Plain English, shown to the group: name the two people and why, e.g. 'Grandma Lan and Minh disagree most on the top options'"),
       }),
       run: async ({ member_a, member_b, reason }) => {
         if (reason) s.log("plan", reason);

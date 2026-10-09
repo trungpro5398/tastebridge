@@ -108,7 +108,7 @@ export default function Home() {
         <h2 className="font-display text-3xl font-semibold tracking-tight">Tested on 120 random groups</h2>
         <p className="mt-2 max-w-2xl opacity-80">
           We ran 120 random groups through live Qloo data. In 40% of them, the fair pick differed from what a simple
-          average would choose. There, the least-matched person who cares gained 14 points, for a 7-point drop in the
+          average would choose. There, the least-matched person with a clear preference gained 14 points, for a 7-point drop in the
           group average. Real groups&apos; results appear on the Impact page as they come in.
         </p>
         <dl className="mt-6 grid gap-6 sm:grid-cols-3">
