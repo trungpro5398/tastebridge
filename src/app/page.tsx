@@ -54,7 +54,7 @@ export default function Home() {
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <DemoButton scenario="family" label="Demo: three generations, one lunch" />
-            <DemoButton variant="secondary" label="Demo: four friends, Friday dinner" />
+            <DemoButton variant="secondary" label="Demo: four friends, one movie" />
           </div>
           <a href="#start" className="mt-3 inline-block font-medium text-brand underline-offset-4 hover:underline">
             Or start your own huddle

@@ -6,9 +6,9 @@ import type { Entity, EntityType } from "@/lib/types";
 const M: EntityType = "urn:entity:movie";
 const TV: EntityType = "urn:entity:tv_show";
 const AR: EntityType = "urn:entity:artist";
-const BK: EntityType = "urn:entity:book";
 
 type Scenario = {
+  kind: "place" | "movie";
   title: string;
   notes: string;
   friends: { name: string; favourites: [string, EntityType][] }[];
@@ -16,19 +16,21 @@ type Scenario = {
 
 /** One-click demo huddles for judges. */
 const SCENARIOS: Record<"friends" | "family", Scenario> = {
-  // four friends with clashing tastes
+  // four friends with clashing tastes, choosing a film
   friends: {
-    title: "Friday dinner",
-    notes: "Keep it under $$$.",
+    kind: "movie",
+    title: "Friday movie night",
+    notes: "",
     friends: [
       { name: "Mai", favourites: [["Spirited Away", M], ["Norah Jones", AR], ["Amélie", M]] },
       { name: "Josh", favourites: [["Mad Max: Fury Road", M], ["John Wick", M], ["Daft Punk", AR]] },
-      { name: "Priya", favourites: [["Ratatouille", M], ["The Bear", TV], ["Salt Fat Acid Heat", BK]] },
+      { name: "Priya", favourites: [["Ratatouille", M], ["The Bear", TV], ["Chef's Table", TV]] },
       { name: "Leo", favourites: [["Parasite", M], ["Severance", TV], ["Radiohead", AR]] },
     ],
   },
   // a Vietnamese-Australian family in Melbourne: grandmother, parents, teenager
   family: {
+    kind: "place",
     title: "Sunday lunch, three generations",
     notes: "Grandma likes it calm. Under $$$.",
     friends: [
@@ -41,7 +43,7 @@ const SCENARIOS: Record<"friends" | "family", Scenario> = {
 };
 
 type Resolved = { name: string; picks: Entity[] }[];
-const demoKey = (scenario: string) => `demo:v6:${scenario}:${qlooMode}`;
+const demoKey = (scenario: string) => `demo:v7:${scenario}:${qlooMode}`;
 
 /** Resolve demo favourites once (sequentially, through the rate limiter) and reuse them for a week. */
 async function demoFriends(scenario: keyof typeof SCENARIOS): Promise<Resolved> {
@@ -78,8 +80,8 @@ export async function POST(request: Request) {
   }
   const huddle = await createHuddle({
     title: SCENARIOS[scenario].title,
-    kind: "place",
-    location: "Melbourne",
+    kind: SCENARIOS[scenario].kind,
+    location: SCENARIOS[scenario].kind === "place" ? "Melbourne" : undefined,
     notes: SCENARIOS[scenario].notes,
     isDemo: true,
   });
