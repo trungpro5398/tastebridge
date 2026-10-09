@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { decideWithRules, ConstraintError } from "@/lib/decide";
-import { QlooError, searchEntities, withQlooLog } from "@/lib/qloo";
+import { QlooError, confidentMatch, searchEntities, withQlooLog } from "@/lib/qloo";
 import type { Entity, EntityType, Huddle, RankedCandidate } from "@/lib/types";
 import { allow, ipHash, tooMany } from "@/lib/usage";
 
@@ -63,7 +63,8 @@ export async function POST(request: Request) {
       for (const [i, m] of input.members.entries()) {
         const picks: Entity[] = [];
         for (const f of m.favourites) {
-          const [hit] = await searchEntities(f, FAVOURITE_TYPES, 1);
+          const hits = await searchEntities(f, FAVOURITE_TYPES, 3);
+          const hit = hits.find((h) => confidentMatch(f, h.name));
           if (hit) picks.push(hit);
           else unresolved.push(f);
         }
@@ -90,6 +91,14 @@ export async function POST(request: Request) {
       compatibility: d.compatibility ?? null,
       resolved_favourites: result.resolved.map((m) => ({ name: m.name, favourites: m.picks.map((p) => ({ name: p.name, type: p.type })) })),
       unresolved_favourites: result.unresolved,
+      constraints_applied: {
+        diet_tags: String(d.filters.tags ?? "").split(",").filter((t) => /vegetarian|vegan|gluten/.test(t)),
+        price_level_max: d.filters.price_level_max ?? null,
+        note:
+          input.notes && !/vegetarian|vegan|gluten|\$/i.test(input.notes)
+            ? "This endpoint applies diet and $-budget must-haves only; other requests need the in-app agent."
+            : undefined,
+      },
       provenance: { qloo: d.mode.qloo, calls },
       note: "Matches are within-shortlist percentiles of Qloo audience-level affinities, not predictions about individuals.",
     });

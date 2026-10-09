@@ -47,7 +47,7 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 - **See the trade-off:** a scatter of every option (group average vs the least-matched person), a map of the shortlist, and a **taste compatibility** score with "taste twins" and "furthest apart" pairs.
 - **Real-world details:** each pick shows Qloo "known for" tags (e.g. *Brunch · Modern · Welcoming*), the suburb, a cover image, and a one-tap **Open in Maps** or **Where to watch** link.
 - **Built for groups in the room:** a QR invite to scan at the table. Decisions survive reloads and can't run twice when two friends press the button.
-- **Learning loop:** a one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
+- **Learning loop:** three one-tap questions after each decision feed the live [Impact page](https://tastebridge-brown.vercel.app/impact).
 - **Quality:** unit tests for minority protection, ties, constraints, empty results, invalid finalisation and Qloo request construction. CI runs on GitHub Actions.
 
 ## Does fairness change anything? We measured it
@@ -55,8 +55,9 @@ Four friends want dinner in Melbourne. The must-have is "Priya is vegetarian, un
 
 Across **60 groups** (30 dinner, 30 movie):
 - The fair pick differed from the highest-average pick in **37%** of groups.
-- Where it differed, the **least-matched person gained +20.8 percentile points**, while the group average dropped 9.7.
-- A second run of 20 groups gave the same picture: 35% differed, +17.3 vs −8.7.
+- Where it differed, the **least-matched person gained +17.1 percentile points**, while the group average dropped 7.1.
+- A second run of 20 groups gave the same picture: 30% differed, +21.3 vs −8.6.
+- **41% of people were "flexible tonight"**: Qloo's scores for them barely differed across options. TasteBridge shrinks their percentiles toward neutral, so noise never decides the evening or gets labelled as "the person we protected".
 
 Full method and caveats are in `docs/EVALUATION.md`.
 
@@ -98,7 +99,7 @@ With no keys it runs fully offline on a fictional demo catalogue (clearly labell
 - The simple-average comparison is a mean-score baseline, not a real ballot.
 - With small shortlists (for example after strict diet filters), percentiles are coarse.
 - Free-text must-haves other than diet tags and dollar budgets are interpreted by the agent and should be checked. Opening hours and availability are not checked.
-- No user study yet. The evaluation uses synthetic groups, and we have not measured decision time or post-dinner ratings.
+- No user study yet. The evaluation uses synthetic groups; real-group numbers accumulate on `/impact`.
 
 ## Who it's for, and how it grows
 - **Consumers (free):** friends, couples and families. A link and a QR code; no accounts.
@@ -107,4 +108,4 @@ With no keys it runs fully offline on a fictional demo catalogue (clearly labell
 - **Unit cost:** a full agent decision costs about **$0.03–0.06 of Claude** (measured; prompt caching on). The API path costs $0 in LLM.
 
 ## What's next
-Booking and maps links, "veto" tokens, learning from post-dinner ratings, and a React Native app.
+Booking hand-off (tables and tickets) for platform partners, "veto" tokens, recalibrating the flexibility threshold from real `/impact` data, and a React Native app.

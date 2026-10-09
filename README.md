@@ -48,7 +48,7 @@ A full agent decision measures about **$0.03–0.06** with Claude Sonnet 5.5: pr
 
 ### Does it matter? (live evaluation)
 
-Across 60 random groups on live Qloo data (30 dinner, 30 movie), the fair pick differed from the highest-average pick in **37%** of groups. Where it differed, it lifted the least-matched person by **+20.8 percentile points**, at a cost of 9.7 points to the group average. Method, a second run and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
+Across 60 random groups on live Qloo data (30 dinner, 30 movie), the fair pick differed from the highest-average pick in **37%** of groups. Where it differed, it lifted the least-matched person by **+17.1 percentile points**, at a cost of 7.1 points to the group average. **41% of people were "flexible tonight"**: Qloo saw little difference between options for them, so the app doesn't present their noise-level differences as preferences. Method, a second run and the caveats are in [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ### The fairness rule
 
@@ -118,7 +118,7 @@ Project story, a redacted request → result walkthrough and known limitations a
 - **Edit your entry:** your browser keeps your member id; "Edit" removes your entry and refills the form (`DELETE /api/huddles/[id]/members/[memberId]`).
 - **Invite at the table:** a QR code plus copy/share link, opened automatically after the first person joins.
 - **Robust decisions:** the work runs under `after()`, so a reload does not lose it. A `deciding` marker stops two friends from starting duplicate runs.
-- A one-tap 👍/👎 after each decision is stored with the huddle (no personal data) to measure real-world usefulness.
+- After each decision, three one-tap questions (worked? clear? did you go?) are stored as anonymous rows and feed `/impact`.
 - Every decision stores a redacted **Qloo evidence** log (endpoint, filters, tag choices, result counts, live/cache/offline) shown under each result. Member names are never sent to Qloo.
 
 ## Stack

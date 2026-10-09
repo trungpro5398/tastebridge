@@ -1,42 +1,47 @@
-# TasteBridge submission preparation — 9 October 2026
+# Submission checklist (updated 10 October 2026)
 
-Status (9 Oct 2026): **live**. https://tastebridge-brown.vercel.app runs on the Qloo hackathon API and Claude Sonnet 5.5, with Supabase persistence. Verified on production: demo create → live Qloo shortlist (20 restaurants) → per-member scoring → agent explanations → persisted result, plus movie and TV huddles. Submission is still a Devpost draft until the owner confirms.
+The project description submitted on Devpost is [docs/STORY.md](STORY.md).
 
-## Current submission requirements
+## Qloo Agentic Hackathon requirements
 
-The [official Qloo Agentic Hackathon page](https://qloo.devpost.com/) requires a functional externally hosted application, a public code repository, a description and an open-source license. It explicitly says demo videos are not required. Checked 9 October 2026. Check the signed-in Devpost dashboard for the final deadline.
+| Requirement (from qloo.devpost.com) | Status | Evidence |
+|---|---|---|
+| Working software that integrates the Qloo API and functions as an agentic tool / is built with an agent framework | ✅ | Claude tool-runner agent with 5 Qloo-backed tools (`src/lib/agent.ts`); live Qloo hackathon API in production |
+| Link to a functional demo that judges can try end to end | ✅ | https://tastebridge-brown.vercel.app (two one-click demos, no account) |
+| Public code repository with source, assets and run instructions | ✅ | https://github.com/trungpro5398/tastebridge; README "Run locally" works with no keys (offline catalogue) |
+| Text description of what it does and what makes it Qloo-powered | ✅ | docs/STORY.md |
+| Externally hosted, fully published (not local / private) | ✅ | Vercel production + Supabase; no deployment protection on the production URL |
+| Open-source license visible in the repo's About section | ✅ | MIT, detected by GitHub |
+| Demo video | Optional | Not required by the rules; a 2–3 minute video is recommended |
 
-## Inspiration
+Qloo kit guidance (`qloo-hackathon-kit/docs/SUBMISSION.md`, `SAFE_USE.md`):
 
-Choosing where to eat or what to watch often favours the loudest voice. TasteBridge makes the trade-off visible and protects the person whose preferences would otherwise get overlooked.
+| Guidance | Where it's covered |
+|---|---|
+| Problem statement | docs/STORY.md |
+| Qloo workflows and why | STORY → "How Qloo makes it work" |
+| Request→result walkthrough | STORY + the in-app "Qloo evidence" panel |
+| Setup steps | README |
+| Limitations | STORY + docs/EVALUATION.md |
+| No personal data to Qloo | Only entity ids, tag ids and a city are sent |
+| Affinities framed as audience tendencies, not individual predictions | In-app copy and docs |
 
-## What it does
+## Security review (10 October 2026)
 
-Start a huddle for a restaurant, film or TV show and invite friends by link. Each member contributes up to three favourites across cultural categories. TasteBridge creates a shared shortlist, scores it separately for each member, and chooses the option with the strongest minimum relative rank. Everyone sees their score, an explanation and a comparison with a mean-score baseline.
+| Check | Result |
+|---|---|
+| Secrets in git history | None: all commits scanned for Qloo, Anthropic and Supabase key patterns; only `.env.local.example` is tracked |
+| Secrets in the browser bundle | None: `.next/static` scanned; no `NEXT_PUBLIC_` secrets; keys are read only in server code (`server-only`) |
+| Database exposure | RLS is enabled on every table with no policies; the anon key can neither read nor write any of the 5 tables (verified). The server uses the service role only. |
+| Member edit credential | Fixed: member ids were public and doubled as the delete credential. Now a separate `edit_token` is returned only at join, required for DELETE, and never selected in public reads. |
+| Abuse and cost | Per-IP limits on search, demo, create, API and feedback. Agent runs are capped at 100/day and 6/hour per hashed IP. Feedback is one answer per question per network per huddle. Qloo calls go through a limiter with bounded retries. |
+| Prompt injection | User-typed fields are passed to the agent as data, with explicit instructions to ignore embedded instructions. The agent can only call read-only Qloo tools; `finalize` rejects picks outside the scored ranking. |
+| Headers | CSP, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, HSTS |
+| Error messages | Generic to clients; details only in server logs |
+| Dependencies | `npm audit --omit=dev`: 0 vulnerabilities |
+| Keys shared in chat during development | Rotate the Qloo key (ian@qloo.com) and the Anthropic key after judging |
 
-## How we built it
-
-Next.js and TypeScript provide the interface and server routes. Qloo search resolves favourites; tags represent constraints; Insights generates candidates and scores the same candidates for each member using `filter.results.entities` and `feature.explainability`. The optional comparison tool uses `/v2/analysis/compare`.
-
-Claude uses five tools to retrieve tags, create candidates, score members, compare tastes and finalize explanations. The application enforces the deterministic top-three order and preserves supported diet and budget requirements across retries. Per-person percentiles make score scales comparable; maximin chooses the winner and Nash welfare breaks ties. Huddles persist in Supabase (Postgres, row-level security on, server-only access).
-
-## Challenges and accomplishments
-
-We separated numerical ranking from generated prose and added tests for minority protection, ties, constraints, empty results, invalid finalization and provider request construction. The offline application supports the full create/join/decide flow across all three categories.
-
-Scores are relative ranks, not measured happiness. There are no real-world impact measurements yet. In the current synthetic vegetarian dinner demo, both the fair and mean-score approaches pick The Green Fig at a minimum percentile of 50%. This is a valid result; fairness does not always select a different winner.
-
-## Before submitting
-
-- Configure Qloo and Anthropic privately; verify real searches, filters, explainability, comparison and an actual Claude tool run.
-- ✅ Supabase project created, schema applied, persistence verified on production.
-- ✅ Deployed to Vercel (public, no deployment authentication on the production URL).
-- After adding keys on Vercel: `vercel env add QLOO_API_KEY production`, `vercel env add ANTHROPIC_API_KEY production`, then `vercel deploy --prod`.
-- Provide the public repository URL and working app URL in Devpost. Keep the MIT license visible.
-- Review generated explanations against actual provider output. Replace this status paragraph with measured live verification only after it exists.
-- Submit through Devpost after the live application is ready. An optional video can explain the flow, but must label synthetic data honestly.
-
-## API references
-
-- [Insights](https://docs.qloo.com/reference/insights-api-deep-dive)
-- [Analysis Compare](https://docs.qloo.com/reference/analysis-compare)
+## Before pressing Submit
+- Re-run `npm test`, `npm run lint`, `npm run build`, and click both demos on production.
+- Make sure the Devpost description matches docs/STORY.md and the gallery shows the current UI.
+- Submit before **31 Oct 2026, 2:45 pm (Melbourne)**. Edits remain possible until the deadline.

@@ -77,3 +77,26 @@ test("time zone picks a sensible default city and streaming region", async () =>
   assert.equal(watchRegion("Europe/London"), "uk");
   assert.equal(watchRegion("Australia/Sydney"), "au");
 });
+
+test("a flexible person (tiny Qloo spread) cannot drive the decision; a decisive one is protected", () => {
+  const shortlist = ["x", "y", "z"].map((id) => entity(id));
+  const perMember = {
+    // a: nearly flat scores, noise-level differences
+    a: [entity("x", 0.6), entity("y", 0.601), entity("z", 0.602)],
+    // b and c: clear, opposite preferences between x and z, both fine with y
+    b: [entity("x", 0.9), entity("y", 0.7), entity("z", 0.2)],
+    c: [entity("x", 0.2), entity("y", 0.7), entity("z", 0.9)],
+  };
+  const r = rankFairly(shortlist, members, perMember);
+  const a = r.ranked[0].scores.find((s) => s.member_id === "a")!;
+  assert.equal(a.flexible, true);
+  assert.ok(Math.abs(a.satisfaction - 0.5) < 0.02, "flexible person sits near neutral");
+  assert.equal(r.ranked[0].entity.entity_id, "y");
+});
+
+test("drivers only name favourites that clearly stand out", async () => {
+  const { drivers } = await import("../src/lib/fairness");
+  const names = new Map([["f1", "Amélie"], ["f2", "Norah Jones"], ["f3", "Spirited Away"]]);
+  assert.deepEqual(drivers({ f1: 0.34, f2: 0.33, f3: 0.33 }, names), []);
+  assert.deepEqual(drivers({ f1: 0.6, f2: 0.2, f3: 0.2 }, names).map((d) => d.name), ["Amélie"]);
+});

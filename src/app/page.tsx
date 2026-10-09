@@ -53,11 +53,12 @@ export default function Home() {
             group will like, and picks the dinner spot or movie that leaves nobody behind.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <DemoButton />
-            <a href="#start" className="rounded-xl px-4 py-3 font-medium text-brand hover:bg-soft">
-              Start your own
-            </a>
+            <DemoButton label="Demo: four friends who disagree" />
+            <DemoButton scenario="family" variant="secondary" label="Demo: three generations, one lunch" />
           </div>
+          <a href="#start" className="mt-3 inline-block font-medium text-brand underline-offset-4 hover:underline">
+            Or start your own huddle
+          </a>
         </div>
 
         <figure className="rounded-3xl border border-line bg-card p-5 shadow-[0_24px_60px_-30px_rgba(91,42,134,0.45)]">
@@ -107,7 +108,7 @@ export default function Home() {
         <h2 className="font-display text-3xl font-semibold tracking-tight">Why groups trust the pick</h2>
         <p className="mt-2 max-w-2xl opacity-80">
           We ran 60 random groups through live Qloo data. In 37% of them, a simple average would have picked something
-          one person matched poorly. TasteBridge&apos;s pick lifted that person by 21 points on average.
+          one person matched poorly. TasteBridge&apos;s pick lifted that person by 17 points on average.
         </p>
         <dl className="mt-6 grid gap-6 sm:grid-cols-3">
           {why.map((w) => (

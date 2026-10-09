@@ -102,7 +102,9 @@ export class DecisionSession {
         for (const diet of ["vegetarian", "vegan", "gluten-free"]) {
           if (!this.huddle.notes?.toLowerCase().includes(diet)) continue;
           const matches = await this.findTags(diet);
-          const tag = matches.find((t) => [diet, `${diet}-friendly`, `${diet} friendly`].includes(t.name.toLowerCase()));
+          // "one vegetarian" means a place WITH vegetarian options, not a vegetarian-only restaurant
+          const named = (t: { name: string }) => [diet, `${diet}-friendly`, `${diet} friendly`].includes(t.name.toLowerCase());
+          const tag = matches.find((t) => t.id.includes(":dietary_option:") && named(t)) ?? matches.find(named);
           if (!tag) throw new ConstraintError(`Could not verify the ${diet} filter. Please revise the must-haves before deciding.`);
           tags.push(tag.id);
         }
@@ -115,7 +117,8 @@ export class DecisionSession {
     const prefer = [...new Set(opts.preferTags ?? [])];
     const budget = isPlace ? parsePrice(this.huddle.notes) : undefined;
     const priceMax = budget === undefined ? opts.priceMax : Math.min(budget, opts.priceMax ?? budget);
-    const take = Math.min(Math.max(opts.take ?? 20, 6), 40);
+    // 30 options gives each person's percentile a finer, more stable scale
+    const take = Math.min(Math.max(opts.take ?? 30, 6), 40);
     const location = isPlace && opts.area ? `${opts.area}, ${this.huddle.location ?? ""}`.replace(/, $/, "") : this.huddle.location;
     const maxKm = isPlace ? (opts.maxKm ?? DEFAULT_MAX_KM) : undefined;
 
@@ -245,6 +248,7 @@ export class DecisionSession {
         per_member: r.scores.map((s) => ({
           member: s.member_name,
           taste_match: pct(s.satisfaction),
+          ...(s.flexible ? { flexible_tonight: true } : {}),
           driven_by_their_favourites: s.because.map((b) => b.name),
         })),
       })),
@@ -299,9 +303,11 @@ function rulePicks(ranked: RankedCandidate[]): Pick[] {
     why_group: `Every member's taste match is ${pct(r.min_satisfaction)} or higher; group average ${pct(r.mean_satisfaction)}.`,
     per_member: r.scores.map((s) => ({
       member_name: s.member_name,
-      reason: s.because.length
-        ? `${pct(s.satisfaction)} taste match for you, driven mostly by ${s.because.map((b) => b.name).join(" and ")}.`
-        : `A ${pct(s.satisfaction)} taste match for you among tonight's options.`,
+      reason: s.flexible
+        ? `Qloo sees little difference between tonight's options for your taste, so you're flexible tonight; any of these suits you about equally.`
+        : s.because.length
+          ? `${pct(s.satisfaction)} taste match for you, driven mostly by ${s.because.map((b) => b.name).join(" and ")}.`
+          : `A ${pct(s.satisfaction)} taste match for you, from your overall taste.`,
     })),
   }));
 }
@@ -310,7 +316,7 @@ function ruleTradeoff(fair?: RankedCandidate, majority?: RankedCandidate | null)
   if (!fair || !majority) return "";
   if (fair.entity.entity_id === majority.entity.entity_id)
     return `${fair.entity.name} is both the fairest option and the one a simple average would pick.`;
-  const loser = [...majority.scores].sort((a, b) => a.satisfaction - b.satisfaction)[0];
+  const loser = [...majority.scores].filter((s) => !s.flexible).sort((a, b) => a.satisfaction - b.satisfaction)[0] ?? majority.scores[0];
   return `A simple average would pick ${majority.entity.name}, but ${loser.member_name}'s taste match there is only ${pct(loser.satisfaction)}. ${fair.entity.name} keeps everyone at ${pct(fair.min_satisfaction)} or higher.`;
 }
 

@@ -1,6 +1,7 @@
 import type React from "react";
 import Avatar from "@/components/Avatar";
 import FairnessChart from "@/components/FairnessChart";
+import TasteMap from "@/components/TasteMap";
 import ShortlistMap from "@/components/ShortlistMap";
 import { highlights } from "@/lib/highlights";
 import { useTimeZone, watchRegion } from "@/lib/locale";
@@ -23,8 +24,10 @@ function hookOf(headline: string, name: string) {
 
 const metaText = (meta?: string) => meta?.split(" · ").join(", ");
 
+/** The person the fair pick protects: the lowest match among people who actually have a preference tonight. */
 function lowest(scores: MemberScore[]) {
-  return [...scores].sort((a, b) => a.satisfaction - b.satisfaction)[0];
+  const decisive = scores.filter((s) => !s.flexible);
+  return [...(decisive.length ? decisive : scores)].sort((a, b) => a.satisfaction - b.satisfaction)[0];
 }
 
 function KnownFor({ c, n = 4 }: { c: RankedCandidate; n?: number }) {
@@ -107,10 +110,18 @@ function MeterRow({
                   lowest match, protected
                 </span>
               )}
+              {s.flexible && (
+                <span
+                  title="Qloo sees little difference between tonight's options for this person, so the fair pick focuses on people with clearer preferences."
+                  className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted"
+                >
+                  flexible tonight
+                </span>
+              )}
             </span>
             <span className="shrink-0 text-right">
               <span className="font-display text-lg font-semibold tabular-nums">{v}%</span>
-              <span className="ml-1.5 text-xs text-muted">{fitWord(s.satisfaction)}</span>
+              <span className="ml-1.5 text-xs text-muted">{s.flexible ? "flexible" : fitWord(s.satisfaction)}</span>
             </span>
           </div>
           <div className="mt-1.5 h-2 rounded-full bg-soft" aria-hidden>
@@ -278,8 +289,9 @@ export default function Results({
               </summary>
               <p className="absolute right-0 z-10 mt-2 w-72 max-w-[80vw] rounded-xl border border-line bg-card p-3 text-xs text-muted shadow-lg">
                 Where this option ranks among tonight&apos;s shortlist when Qloo scores it against that person&apos;s
-                favourites. Qloo describes what people with similar tastes tend to like; it is not a prediction about
-                any one person.
+                favourites, pulled toward 50% when Qloo sees little difference between the options for them (marked
+                &ldquo;flexible tonight&rdquo;). Qloo describes what people with similar tastes tend to like; it is not a
+                prediction about any one person.
                 {decision.mode.qloo === "mock" && " This huddle uses the offline demo catalogue (fictional venues)."}
               </p>
             </details>
@@ -299,6 +311,8 @@ export default function Results({
       </article>
 
       {afterPick}
+
+      <TasteMap decision={decision} colors={colors} />
 
       {decision.compatibility && (
         <Compatibility c={decision.compatibility} colorOfName={(n) => color(top.r.scores.find((s) => s.member_name === n)?.member_id ?? "")} />
@@ -369,7 +383,7 @@ export default function Results({
         </div>
       )}
 
-      <details id="how" className="rounded-3xl border border-line bg-card p-5 text-sm sm:px-6">
+      <details id="how" open={decision.mode.agent === "claude"} className="rounded-3xl border border-line bg-card p-5 text-sm sm:px-6">
         <summary className="cursor-pointer font-display text-base font-semibold">How the agent decided</summary>
         <ol className="mt-3 space-y-2">
           {decision.trace.map((t, i) => (

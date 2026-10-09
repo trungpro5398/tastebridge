@@ -34,6 +34,7 @@ Then score_for_members and finalize. In change_note, say in one sentence what ch
 
 Writing rules for finalize:
 - Every claim must come from tool output: taste_match percentages, the member favourites listed in driven_by_their_favourites, and the option's known_for tags (you may mention one or two, e.g. a menu highlight or the ambience). Never invent facts about a venue or title (no opening hours, dishes, actors or prices you were not given).
+- Members marked flexible_tonight have nearly identical Qloo scores across options: say they are flexible tonight rather than inventing a reason; do not name them as the person who loses out.
 - Qloo affinities describe what audiences with similar tastes tend to like. They are not predictions about an individual, so say "fans of X tend to rank this highly", never "you will love this".
 - headline: the option's name plus a 3–6 word hook.
 - why_group: one sentence on why it works for the whole group.

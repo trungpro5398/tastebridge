@@ -14,6 +14,16 @@ import type { InsightEntity, Member, MemberScore, RankedCandidate } from "./type
 
 const EPS = 0.05;
 
+/**
+ * Qloo affinities share one 0–1 scale, so a tiny spread across tonight's shortlist means Qloo sees
+ * little difference between the options for that person. Measured on live data (40 people): spread
+ * p25 0.037, median 0.074, p90 0.159. Decisiveness d = spread / FULL_SPREAD (capped at 1); each
+ * person's percentile is shrunk toward neutral by d, so noise can't masquerade as a strong preference
+ * and maximin protects people who actually care.
+ */
+export const FULL_SPREAD = 0.1;
+export const FLEXIBLE_BELOW = 0.5;
+
 export function percentiles(values: number[]): number[] {
   const n = values.length;
   if (n <= 1) return values.map(() => 1);
@@ -29,6 +39,22 @@ export function percentiles(values: number[]): number[] {
   return out;
 }
 
+/**
+ * Favourites that clearly drove a match. Qloo's explainability is often nearly flat across a
+ * person's favourites; we only name one when it stands out (≥ 15% above that person's average).
+ */
+export function drivers(explain: Record<string, number>, pickName: Map<string, string>) {
+  const mine = Object.entries(explain).filter(([id]) => pickName.has(id));
+  if (!mine.length) return [];
+  if (mine.length === 1) return [{ name: pickName.get(mine[0][0])!, weight: +mine[0][1].toFixed(3) }];
+  const avg = mine.reduce((a, [, w]) => a + w, 0) / mine.length;
+  return mine
+    .filter(([, w]) => w >= avg * 1.15)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([id, w]) => ({ name: pickName.get(id)!, weight: +w.toFixed(3) }));
+}
+
 export function rankFairly(
   shortlist: InsightEntity[],
   members: Member[],
@@ -40,20 +66,20 @@ export function rankFairly(
     const scored = new Map((perMember[m.id] ?? []).map((e) => [e.entity_id, e]));
     const aff = shortlist.map((c) => scored.get(c.entity_id)?.affinity ?? 0);
     const pct = percentiles(aff);
+    const spread = aff.length ? Math.max(...aff) - Math.min(...aff) : 0;
+    const decisiveness = Math.min(1, spread / FULL_SPREAD);
     const pickName = new Map(m.picks.map((p) => [p.entity_id, p.name]));
     return shortlist.map<MemberScore>((c, idx) => {
       const explain = scored.get(c.entity_id)?.explain ?? {};
-      const because = Object.entries(explain)
-        .filter(([id]) => pickName.has(id))
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 2)
-        .map(([id, w]) => ({ name: pickName.get(id)!, weight: +w.toFixed(3) }));
       return {
         member_id: m.id,
         member_name: m.name,
         affinity: +aff[idx].toFixed(4),
-        satisfaction: +pct[idx].toFixed(3),
-        because,
+        percentile: +pct[idx].toFixed(3),
+        satisfaction: +(0.5 + (pct[idx] - 0.5) * decisiveness).toFixed(3),
+        decisiveness: +decisiveness.toFixed(2),
+        flexible: decisiveness < FLEXIBLE_BELOW,
+        because: drivers(explain, pickName),
       };
     });
   });

@@ -21,12 +21,15 @@ export const DINNER_EXCLUDE =
     ? ["urn:tag:genre:place:shopping_mall", "urn:tag:genre:place:market", "urn:tag:genre:place:hotel"]
     : [];
 
-/** Keep restaurants and cafés; drop drink-first venues (bars, lounges, pubs, clubs) for a dinner pick. */
+/**
+ * Somewhere to have dinner: restaurants, not drink-first venues (bars, lounges, pubs, clubs)
+ * and not daytime-only places (breakfast/brunch spots, cafés, coffee shops, bakeries, dessert).
+ */
 export function isDiningVenue(e: { primaryGenre?: string }) {
   const g = e.primaryGenre;
   if (!g) return true;
   if (!g.startsWith("urn:tag:genre:place:restaurant")) return false;
-  return !/:(bar|cocktail_bar|lounge_bar|wine_bar|sports_bar|live_music_bar|pub|nightclub|lounge|rooftop_lounge)$/.test(g);
+  return !/:(bar|cocktail_bar|lounge_bar|wine_bar|sports_bar|live_music_bar|pub|nightclub|lounge|rooftop_lounge|breakfast|brunch|brunch_restaurant|cafe|coffee_shop|coffee|bakery|dessert|dessert_shop|ice_cream|juice_bar|donut|tea_house)$/.test(g);
 }
 
 export class QlooError extends Error {
@@ -364,4 +367,28 @@ function mockInsights(q: InsightsQuery): InsightEntity[] {
     })
     .sort((a, b) => b.affinity - a.affinity)
     .slice(0, q.take ?? 20);
+}
+
+/** Lowercase, strip accents and punctuation: "Trịnh Công Sơn" → "trinh cong son". */
+export function normaliseName(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Does a search hit plausibly mean what the person typed? Rejects "Teresa Teng" → "Vienna Teng"
+ * and nonsense → random titles; accepts "MasterChef Australia" → "MasterChef: Australia".
+ */
+export function confidentMatch(query: string, name: string) {
+  const q = normaliseName(query).split(" ").filter((w) => w.length > 1 && !["the", "a", "an", "of"].includes(w));
+  const n = new Set(normaliseName(name).split(" "));
+  if (!q.length) return false;
+  const hit = q.filter((w) => n.has(w)).length;
+  return hit / q.length >= 0.75;
 }

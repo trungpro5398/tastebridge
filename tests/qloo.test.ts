@@ -76,13 +76,22 @@ test("venue addresses shorten to the suburb", async () => {
   assert.equal(shortAddress(undefined), undefined);
 });
 
-test("dinner keeps restaurants and cafés, drops malls, markets, hotels and drink-first bars", async () => {
+test("dinner keeps restaurants, drops malls, markets, hotels and drink-first bars", async () => {
   const { isDiningVenue } = await qloo;
   const g = (x: string) => ({ primaryGenre: `urn:tag:genre:place:${x}` });
   assert.equal(isDiningVenue(g("restaurant")), true);
   assert.equal(isDiningVenue(g("restaurant:italian")), true);
-  assert.equal(isDiningVenue(g("restaurant:cafe")), true);
-  for (const x of ["shopping_mall", "market", "hotel", "restaurant:bar", "restaurant:cocktail_bar", "restaurant:lounge_bar"])
+  assert.equal(isDiningVenue(g("restaurant:vegan")), true);
+  for (const x of ["shopping_mall", "market", "hotel", "restaurant:bar", "restaurant:cocktail_bar", "restaurant:lounge_bar", "restaurant:breakfast", "restaurant:cafe", "restaurant:coffee_shop"])
     assert.equal(isDiningVenue(g(x)), false, x);
   assert.equal(isDiningVenue({}), true);
+});
+
+test("search hits must plausibly match what was typed", async () => {
+  const { confidentMatch } = await qloo;
+  assert.equal(confidentMatch("Teresa Teng", "Vienna Teng"), false);
+  assert.equal(confidentMatch("xqzzvy nonexistent", "Mystery Lover Nonexistent Summer"), false);
+  assert.equal(confidentMatch("MasterChef Australia", "MasterChef: Australia"), true);
+  assert.equal(confidentMatch("Trinh Cong Son", "Trịnh Công Sơn"), true);
+  assert.equal(confidentMatch("the godfather", "The Godfather"), true);
 });

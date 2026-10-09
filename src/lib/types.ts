@@ -70,8 +70,17 @@ export type MemberScore = {
   member_name: string;
   /** raw Qloo affinity of this candidate for this member's taste */
   affinity: number;
-  /** percentile of this candidate among tonight's candidates for this member, 0..1 */
+  /** raw within-shortlist percentile for this member, 0..1 */
+  percentile?: number;
+  /**
+   * taste match shown to people and used by the fair ranking: the percentile shrunk toward 0.5 by
+   * how decisive this person's Qloo scores are tonight (see fairness.ts)
+   */
   satisfaction: number;
+  /** 0..1: how much Qloo's scores for this person differ across tonight's options */
+  decisiveness?: number;
+  /** Qloo sees little difference between options for this person tonight */
+  flexible?: boolean;
   /** which of the member's favourites drove the match, strongest first */
   because: { name: string; weight: number }[];
 };

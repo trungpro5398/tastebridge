@@ -22,7 +22,7 @@ for (const l of (() => {
 }
 
 const { searchEntities, qlooMode } = await import("../src/lib/qloo.ts");
-const { decideWithRules } = await import("../src/lib/decide.ts");
+const { DecisionSession } = await import("../src/lib/decide.ts");
 type Entity = import("../src/lib/types.ts").Entity;
 type EntityType = import("../src/lib/types.ts").EntityType;
 type Huddle = import("../src/lib/types.ts").Huddle;
@@ -52,7 +52,17 @@ for (const [name, type] of POOL) {
 }
 console.log(`pool: ${pool.length} favourites resolved (${qlooMode})`);
 
-type Row = { kind: string; n: number; fairMin: number; avgMin: number; fairMean: number; avgMean: number; differs: boolean };
+type Row = {
+  kind: string;
+  fairMin: number;
+  avgMin: number;
+  fairMean: number;
+  avgMean: number;
+  differs: boolean;
+  plainDiffers: boolean;
+  flexible: number;
+  people: number;
+};
 const rows: Row[] = [];
 const kinds = ["place", "movie"] as const;
 
@@ -68,17 +78,28 @@ for (let g = 0; g < GROUPS; g++) {
     members: Array.from({ length: n }, (_, i) => ({ id: `m${i}`, name: `P${i}`, joined_at: "", picks: pickN(pool, 3) })),
   };
   try {
-    const d = await decideWithRules(huddle);
-    const fair = d.ranked[0];
-    const avg = d.majority!;
+    const s = new DecisionSession(huddle);
+    await s.generateCandidates({});
+    await s.scoreMembers();
+    if (!s.ranked.length || !s.majority) throw new Error("no candidates");
+    const fair = s.ranked[0];
+    const avg = s.majority;
+    // what plain maximin over raw percentiles (no flexibility shrinkage) would have picked
+    const plain = [...s.ranked].sort(
+      (a, b) =>
+        Math.min(...b.scores.map((x) => x.percentile ?? x.satisfaction)) -
+        Math.min(...a.scores.map((x) => x.percentile ?? x.satisfaction)),
+    )[0];
     rows.push({
       kind,
-      n,
       fairMin: fair.min_satisfaction,
       avgMin: avg.min_satisfaction,
       fairMean: fair.mean_satisfaction,
       avgMean: avg.mean_satisfaction,
       differs: fair.entity.entity_id !== avg.entity.entity_id,
+      plainDiffers: plain.entity.entity_id !== fair.entity.entity_id,
+      flexible: fair.scores.filter((x) => x.flexible).length,
+      people: n,
     });
     process.stdout.write(".");
   } catch (err) {
@@ -90,8 +111,11 @@ for (let g = 0; g < GROUPS; g++) {
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
 const pp = (x: number) => `${(x * 100).toFixed(1)} pts`;
 const differ = rows.filter((r) => r.differs);
+const people = rows.reduce((a, r) => a + r.people, 0);
+const flexible = rows.reduce((a, r) => a + r.flexible, 0);
 console.log(`\n\ngroups evaluated: ${rows.length} (${rows.filter((r) => r.kind === "place").length} dinner, ${rows.filter((r) => r.kind === "movie").length} movie)`);
+console.log(`people flagged "flexible tonight": ${flexible}/${people} (${((100 * flexible) / Math.max(1, people)).toFixed(0)}%)`);
 console.log(`fair pick differs from the highest-average pick: ${differ.length}/${rows.length} (${((100 * differ.length) / Math.max(1, rows.length)).toFixed(0)}%)`);
-console.log(`lowest member's match, all groups: fair ${pp(mean(rows.map((r) => r.fairMin)))} vs average ${pp(mean(rows.map((r) => r.avgMin)))}`);
-console.log(`  gain where they differ: +${pp(mean(differ.map((r) => r.fairMin - r.avgMin)))} for the least-matched person`);
+console.log(`  gain where they differ: +${pp(mean(differ.map((r) => r.fairMin - r.avgMin)))} for the least-matched person (flexibility-adjusted)`);
 console.log(`  cost where they differ: -${pp(mean(differ.map((r) => r.avgMean - r.fairMean)))} of group-average match`);
+console.log(`flexibility-awareness changed the pick vs plain maximin: ${rows.filter((r) => r.plainDiffers).length}/${rows.length}`);
