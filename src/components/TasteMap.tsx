@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { initials } from "@/lib/members";
+import { initials, inkOn } from "@/lib/members";
 import type { Decision, RankedCandidate } from "@/lib/types";
 
 const SIZE = 340;
@@ -118,7 +118,7 @@ export default function TasteMap({ decision, colors }: { decision: Decision; col
                 y={p.y + 4}
                 textAnchor="middle"
                 className="text-[11px] font-semibold"
-                fill={p.flexible ? colors[p.id] ?? "var(--muted)" : "#fff"}
+                fill={p.flexible ? colors[p.id] ?? "var(--muted)" : colors[p.id]?.startsWith("#") ? inkOn(colors[p.id]) : "#fff"}
               >
                 {initials(p.name)}
               </text>

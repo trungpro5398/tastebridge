@@ -3,6 +3,11 @@ import { Suspense } from "react";
 import { getHuddle } from "@/lib/store";
 import HuddleView from "./HuddleView";
 
+export const metadata = {
+  description:
+    "A TasteBridge huddle: everyone adds three favourites, and an agent on Qloo's taste graph finds one fair pick for the whole group.",
+};
+
 export default function HuddlePage(props: PageProps<"/h/[id]">) {
   return (
     <Suspense fallback={<Skeleton />}>

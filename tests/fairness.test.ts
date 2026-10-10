@@ -192,3 +192,10 @@ test("between equally kind options, a carried-over credit really breaks the clos
   assert.equal(fairOrder([opt("x", 0.6, 0.6, 0.6), opt("y", 0.58, 0.58, 0.58)])[0].entity.entity_id, "x");
   assert.equal(fairOrder([opt("x", 0.6, 0.55, 0.6), opt("y", 0.58, 0.58, 0.58)])[0].entity.entity_id, "y");
 });
+
+test("member initials always get the text colour with the better contrast", async () => {
+  const { inkOn, MEMBER_COLORS } = await import("../src/lib/members");
+  assert.equal(inkOn("#000000"), "#ffffff");
+  assert.equal(inkOn("#ffffff"), "#1d1630");
+  for (const c of MEMBER_COLORS) assert.ok(["#ffffff", "#1d1630"].includes(inkOn(c)));
+});
