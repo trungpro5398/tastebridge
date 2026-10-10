@@ -37,7 +37,8 @@ export default function CompareBars({
           </div>
           <div className="mt-1.5 flex gap-2">
             {people.map((p) => (
-              <span key={p.name} className="flex-1 truncate text-center text-[11px] font-semibold" style={{ color: p.color }}>
+              <span key={p.name} className="flex flex-1 items-center justify-center gap-1 truncate text-[11px] font-semibold">
+                <span className="size-1.5 shrink-0 rounded-full" style={{ background: p.color }} aria-hidden />
                 {initials(p.name)}
               </span>
             ))}
